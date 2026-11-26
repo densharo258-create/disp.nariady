@@ -1,0 +1,1969 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Диспетчерська відомість — Наряд на випуск транспорту</title>
+    <!-- Підключення Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Шрифти Inter та JetBrains Mono для чіткого відображення бортових номерів і часу -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- Іконки Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+
+        /* Стилі для друкованої форми А4 */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 12mm 15mm;
+            }
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                font-size: 11pt;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .print-container {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+            }
+            th, td {
+                border: 1px solid #334155 !important;
+                padding: 6px 8px !important;
+                color: #000000 !important;
+                background: transparent !important;
+            }
+            th {
+                background-color: #f1f5f9 !important;
+                font-weight: 700 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .badge-print {
+                border: none !important;
+                padding: 0 !important;
+                background: transparent !important;
+                color: #000000 !important;
+                font-weight: 600 !important;
+            }
+        }
+
+        .print-only {
+            display: none;
+        }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .toast-anim {
+            animation: fadeSlideUp 0.2s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
+
+    <!-- Контейнер для сповіщень (Toast) -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none no-print"></div>
+
+    <!-- Модальне вікно підтвердження -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 max-w-md w-full p-6">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                </div>
+                <h3 id="confirm-title" class="text-lg font-bold text-slate-900">Підтвердження дії</h3>
+            </div>
+            <p id="confirm-message" class="text-sm text-slate-600 mb-6 leading-relaxed"></p>
+            <div class="flex justify-end gap-3">
+                <button type="button" id="confirm-cancel" class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">Скасувати</button>
+                <button type="button" id="confirm-ok" class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">Підтвердити</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ВЕРХНЯ ПАНЕЛЬ (Класичний чистий дизайн диспетчерської відомості) -->
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3.5">
+                <!-- Назва та статус -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-inner shrink-0">
+                        <i data-lucide="bus-front" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white">Диспетчерська відомість</h1>
+                            <span class="px-2 py-0.5 text-xs font-mono font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded">НАРЯД</span>
+                        </div>
+                        <p class="text-xs text-slate-400">Оперативне формування наряду на випуск транспорту</p>
+                    </div>
+                </div>
+
+                <!-- Керування датою та основні дії -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- Перемикач дати -->
+                    <div class="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5">
+                        <button type="button" onclick="changeDate(-1)" title="Попередній день" class="p-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-md transition-colors">
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        </button>
+                        <div class="relative flex items-center px-2">
+                            <i data-lucide="calendar" class="w-4 h-4 text-blue-400 mr-2 pointer-events-none"></i>
+                            <input type="date" id="dispatch-date" class="bg-transparent text-sm font-mono font-semibold text-white focus:outline-none cursor-pointer">
+                        </div>
+                        <button type="button" onclick="changeDate(1)" title="Наступний день" class="p-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-md transition-colors">
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <button type="button" onclick="setToday()" class="px-3 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition-colors">
+                        Сьогодні
+                    </button>
+
+                    <!-- Кнопка Довідника ТЗ -->
+                    <button type="button" onclick="openFleetModal()" title="Власний парк машин та маршрути"
+                        class="px-3 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg transition-colors flex items-center gap-1.5">
+                        <i data-lucide="garage" class="w-4 h-4 text-amber-400"></i>
+                        <span>Довідник ТЗ (<span id="header-fleet-count">0</span>)</span>
+                    </button>
+
+                    <!-- Кнопка Авто-генерації -->
+                    <button type="button" onclick="openAutoDispatchModal()" title="Рандомно сформувати наряд по маршрутах"
+                        class="px-3 py-2 text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs">
+                        <i data-lucide="wand-2" class="w-4 h-4"></i>
+                        <span>Авто-генерація</span>
+                    </button>
+
+                    <!-- Копіювати на завтра -->
+                    <button type="button" onclick="copyToNextDay()" title="Скопіювати поточний наряд на наступний день"
+                        class="px-3 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-xs">
+                        <i data-lucide="copy-plus" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">На завтра</span>
+                    </button>
+
+                    <!-- Експорт CSV -->
+                    <button type="button" onclick="exportToCSV()" title="Завантажити таблицю для Excel (CSV)"
+                        class="px-3 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-xs">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Excel / CSV</span>
+                    </button>
+
+                    <!-- Друк А4 -->
+                    <button type="button" onclick="printDispatch()" title="Друкувати відомість А4"
+                        class="px-3.5 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-xs">
+                        <i data-lucide="printer" class="w-4 h-4"></i>
+                        <span>Друк А4</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ШАПКА ДЛЯ ДРУКОВАНОЇ ФОРМИ А4 -->
+    <div class="print-only max-w-7xl mx-auto px-4 pt-2 mb-6">
+        <div class="flex justify-between items-start border-b-2 border-black pb-3 mb-4">
+            <div>
+                <p class="text-xs uppercase tracking-wider font-bold">Диспетчерська служба руху</p>
+                <h1 class="text-xl font-bold uppercase mt-1">НАРЯД НА ВИПУСК РУХОМОГО СКЛАДУ</h1>
+                <p class="text-sm mt-1">Дата випуску: <strong id="print-date-display" class="font-mono"></strong></p>
+            </div>
+            <div class="text-right text-xs space-y-1">
+                <p>Всього одиниць на лінії: <strong id="print-total-count">0</strong></p>
+                <p>Задіяно маршрутів: <strong id="print-routes-count">0</strong></p>
+                <p id="print-shifts-summary"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ОСНОВНИЙ КОНТЕНТ -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 print-container">
+
+        <!-- ПАНЕЛЬ СТАТИСТИКИ -->
+        <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 no-print">
+            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Всього на лінії</p>
+                    <p id="stat-total" class="text-2xl sm:text-3xl font-mono font-bold text-slate-900 mt-1">0</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <i data-lucide="truck" class="w-5 h-5"></i>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">1 зміна</p>
+                    <p id="stat-shift1" class="text-2xl sm:text-3xl font-mono font-bold text-sky-600 mt-1">0</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+                    <i data-lucide="sunrise" class="w-5 h-5"></i>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">2 зміна</p>
+                    <p id="stat-shift2" class="text-2xl sm:text-3xl font-mono font-bold text-amber-600 mt-1">0</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <i data-lucide="sunset" class="w-5 h-5"></i>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Розривні / Інші</p>
+                    <p id="stat-split" class="text-2xl sm:text-3xl font-mono font-bold text-purple-600 mt-1">0</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                    <i data-lucide="clock" class="w-5 h-5"></i>
+                </div>
+            </div>
+
+            <div class="col-span-2 sm:col-span-1 bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Маршрутів</p>
+                    <p id="stat-routes" class="text-2xl sm:text-3xl font-mono font-bold text-emerald-600 mt-1">0</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <i data-lucide="route" class="w-5 h-5"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- ФОРМА ШВИДКОГО ДОДАВАННЯ ЗАПИСУ -->
+        <section class="bg-white rounded-xl border border-slate-200 shadow-xs p-4 sm:p-5 no-print">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3.5">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-800">Додати одиницю транспорту в наряд</h2>
+                </div>
+                <span class="text-xs text-slate-400 hidden sm:inline">Натисніть <kbd class="px-1.5 py-0.5 text-xs font-mono bg-slate-100 border border-slate-300 rounded">Enter</kbd> для швидкого внесення</span>
+            </div>
+
+            <form id="add-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+                <!-- Бортовий номер -->
+                <div class="lg:col-span-3 relative">
+                    <div class="flex items-center justify-between mb-1">
+                        <label for="input-board" class="block text-xs font-semibold text-slate-600">
+                            Борт. номер <span class="text-red-500">*</span>
+                        </label>
+                        <span id="selected-vehicle-preview" class="text-[11px] font-medium text-blue-600 truncate max-w-[140px]"></span>
+                    </div>
+                    <input type="text" id="input-board" required placeholder="Напр. 102 або АМ1974АА" autocomplete="off"
+                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-sm text-slate-900 placeholder:font-sans placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                    <!-- Випадаючий список підбору з довідника ТЗ -->
+                    <div id="board-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-300 rounded-xl shadow-xl z-40 max-h-60 overflow-y-auto divide-y divide-slate-100"></div>
+                </div>
+
+                <!-- Маршрут -->
+                <div class="lg:col-span-2">
+                    <label for="input-route" class="block text-xs font-semibold text-slate-600 mb-1">
+                        Маршрут <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="input-route" required list="route-suggestions" placeholder="Напр. 2 або 4А" autocomplete="off"
+                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg font-semibold text-sm text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                </div>
+
+                <!-- Графік -->
+                <div class="lg:col-span-1">
+                    <label for="input-schedule" class="block text-xs font-semibold text-slate-600 mb-1">
+                        Графік <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="input-schedule" required placeholder="1" autocomplete="off"
+                        class="w-full px-2.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-sm text-slate-900 placeholder:font-sans placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                </div>
+
+                <!-- Виїзд та Заїзд -->
+                <div class="lg:col-span-2 grid grid-cols-2 gap-1.5">
+                    <div>
+                        <label for="input-time-out" class="block text-xs font-semibold text-slate-600 mb-1 truncate">Виїзд</label>
+                        <input type="text" id="input-time-out" maxlength="5" inputmode="numeric" placeholder="06:21" autocomplete="off"
+                            class="time-mask-input w-full px-2 py-2.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-semibold text-sm text-center text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                    </div>
+                    <div>
+                        <label for="input-time-in" class="block text-xs font-semibold text-slate-600 mb-1 truncate">Заїзд</label>
+                        <input type="text" id="input-time-in" maxlength="5" inputmode="numeric" placeholder="15:46" autocomplete="off"
+                            class="time-mask-input w-full px-2 py-2.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-semibold text-sm text-center text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                    </div>
+                </div>
+
+                <!-- Зміна -->
+                <div class="lg:col-span-2">
+                    <label for="input-shift" class="block text-xs font-semibold text-slate-600 mb-1">
+                        Зміна <span class="text-red-500">*</span>
+                    </label>
+                    <select id="input-shift" required
+                        class="w-full px-2.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg font-medium text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all cursor-pointer">
+                        <option value="1 зміна">1 зміна</option>
+                        <option value="2 зміна">2 зміна</option>
+                        <option value="Розривний">Розривний</option>
+                        <option value="Денний">Денний (цілий день)</option>
+                        <option value="Нічний">Нічний</option>
+                        <option value="Резерв">Резерв</option>
+                    </select>
+                </div>
+
+                <!-- Водій / Примітка + Кнопка -->
+                <div class="sm:col-span-2 lg:col-span-2 flex gap-2 items-end">
+                    <div class="flex-1 min-w-0">
+                        <label for="input-note" class="block text-xs font-semibold text-slate-600 mb-1 truncate">Примітка / Водій</label>
+                        <input type="text" id="input-note" placeholder="ПІБ водія..." autocomplete="off"
+                            class="w-full px-2.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                    </div>
+                    <button type="submit" title="Внести в наряд"
+                        class="py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm rounded-lg shadow-xs transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span>Додати</span>
+                    </button>
+                </div>
+            </form>
+
+            <datalist id="route-suggestions"></datalist>
+        </section>
+
+        <!-- ТАБЛИЦЯ НАРЯДУ ТА ФІЛЬТРИ -->
+        <section class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+            <!-- Панель інструментів таблиці -->
+            <div class="p-4 border-b border-slate-200 bg-slate-50/70 flex flex-col lg:flex-row lg:items-center justify-between gap-3 no-print">
+                <div class="flex flex-wrap items-center gap-2.5 flex-1">
+                    <div class="relative flex-1 min-w-[200px] max-w-xs">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                        <input type="text" id="filter-search" placeholder="Пошук борту, маршруту, водія..."
+                            class="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <select id="filter-route"
+                        class="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="all">Усі маршрути</option>
+                    </select>
+
+                    <select id="filter-shift"
+                        class="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="all">Усі зміни</option>
+                        <option value="1 зміна">1 зміна</option>
+                        <option value="2 зміна">2 зміна</option>
+                        <option value="Розривний">Розривний</option>
+                        <option value="Денний">Денний (цілий день)</option>
+                        <option value="Нічний">Нічний</option>
+                        <option value="Резерв">Резерв</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-1.5 text-xs text-slate-500">
+                        <i data-lucide="arrow-up-down" class="w-3.5 h-3.5"></i>
+                        <span>Сортування:</span>
+                    </div>
+                    <select id="sort-by"
+                        class="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="route">За маршрутом</option>
+                        <option value="board">За бортовим №</option>
+                        <option value="shift">За зміною</option>
+                        <option value="schedule">За графіком</option>
+                        <option value="created">За часом додавання</option>
+                    </select>
+
+                    <button type="button" onclick="clearCurrentDay()" title="Очистити наряд за обрану дату"
+                        class="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors flex items-center gap-1.5 ml-auto lg:ml-2">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        <span>Очистити день</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Таблиця -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/80 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-600">
+                            <th class="py-3 px-4 w-12 text-center">№</th>
+                            <th class="py-3 px-4">Борт. номер / ТЗ</th>
+                            <th class="py-3 px-4">Маршрут</th>
+                            <th class="py-3 px-4">Графік (Виїзд - Заїзд)</th>
+                            <th class="py-3 px-4">Зміна</th>
+                            <th class="py-3 px-4">Водій / Примітка</th>
+                            <th class="py-3 px-4 text-right no-print w-28">Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dispatch-table-body" class="divide-y divide-slate-200 text-sm"></tbody>
+                </table>
+            </div>
+
+            <!-- Порожній стан -->
+            <div id="empty-state" class="hidden py-14 px-4 text-center no-print">
+                <div class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="clipboard-list" class="w-7 h-7"></i>
+                </div>
+                <h3 class="text-base font-bold text-slate-800">Наряд на цю дату порожній</h3>
+                <p class="text-sm text-slate-500 max-w-md mx-auto mt-1 mb-4">
+                    Додайте транспортний засіб у формі вище, відкрийте «Довідник ТЗ» для створення свого парку або скористайтеся «Авто-генерацією».
+                </p>
+                <div class="flex flex-wrap justify-center gap-2">
+                    <button type="button" onclick="openFleetModal()" class="px-4 py-2 text-xs font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg transition-colors inline-flex items-center gap-1.5">
+                        <i data-lucide="garage" class="w-4 h-4 text-amber-600"></i>
+                        Довідник ТЗ
+                    </button>
+                    <button type="button" onclick="openAutoDispatchModal()" class="px-4 py-2 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg transition-colors inline-flex items-center gap-1.5">
+                        <i data-lucide="wand-2" class="w-4 h-4"></i>
+                        Авто-генерація наряду
+                    </button>
+                </div>
+            </div>
+
+            <!-- Підпис для друкованої форми А4 -->
+            <div class="print-only mt-10 pt-4">
+                <div class="grid grid-cols-2 gap-8 text-sm">
+                    <div>
+                        <p class="mb-6">Наряд склав черговий диспетчер: _______________________</p>
+                        <p class="text-xs text-slate-600">(підпис, прізвище та ініціали)</p>
+                    </div>
+                    <div>
+                        <p class="mb-6">Випуск на лінію дозволяю (механік ВТК): _______________________</p>
+                        <p class="text-xs text-slate-600">(підпис, штамп)</p>
+                    </div>
+                </div>
+                <div class="mt-6 text-xs text-slate-500 flex justify-between border-t border-slate-300 pt-2">
+                    <span>Сформовано в системі «Диспетчерська відомість»</span>
+                    <span id="print-timestamp"></span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ФУТЕР -->
+    <footer class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center sm:text-left flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400 no-print">
+        <p>Диспетчерська відомість. Дані автоматично зберігаються у браузері.</p>
+        <p class="mt-1 sm:mt-0 font-mono" id="live-clock"></p>
+    </footer>
+
+    <!-- ===================================================================== -->
+    <!-- МОДАЛЬНЕ ВІКНО: ДОВІДНИК ТЗ (ПАРК МАШИН) ТА МАРШРУТІВ                 -->
+    <!-- ===================================================================== -->
+    <div id="fleet-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-3xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-bold">
+                        <i data-lucide="garage" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold">Довідник ТЗ (Парк машин) та маршрутів</h3>
+                        <p class="text-xs text-slate-400">Додавайте власні бортові номери та моделі ТЗ для швидкого вибору і авто-генерації</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeFleetModal()" class="text-slate-400 hover:text-white p-1.5 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Вкладки всередині модального вікна -->
+            <div class="flex border-b border-slate-200 bg-slate-50 px-6 pt-3 gap-6 shrink-0">
+                <button type="button" id="tab-btn-vehicles" onclick="switchCatalogTab('vehicles')"
+                    class="pb-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 flex items-center gap-2">
+                    <i data-lucide="truck" class="w-4 h-4"></i>
+                    <span>Рухомий склад (<span id="tab-vehicles-count">0</span>)</span>
+                </button>
+                <button type="button" id="tab-btn-routes" onclick="switchCatalogTab('routes')"
+                    class="pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2">
+                    <i data-lucide="route" class="w-4 h-4"></i>
+                    <span>Маршрути (<span id="tab-routes-count">0</span>)</span>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-5">
+                <!-- Вкладка ТЗ -->
+                <div id="catalog-tab-vehicles" class="space-y-4">
+                    <form id="fleet-form" class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                        <input type="hidden" id="fleet-edit-id">
+                        <div class="sm:col-span-3">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Борт. номер *</label>
+                            <input type="text" id="fleet-board" required placeholder="Напр. 102" autocomplete="off"
+                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono font-bold text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="sm:col-span-5">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Назва / Модель ТЗ *</label>
+                            <input type="text" id="fleet-model" required placeholder="Напр. Богдан А092, МАЗ-206" autocomplete="off"
+                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Тип ТЗ</label>
+                            <select id="fleet-type"
+                                class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="Автобус">Автобус</option>
+                                <option value="Тролейбус">Тролейбус</option>
+                                <option value="Трамвай">Трамвай</option>
+                                <option value="Маршрутка">Маршрутка</option>
+                            </select>
+                        </div>
+                        <div class="sm:col-span-2 flex gap-1.5">
+                            <button type="submit" id="fleet-submit-btn"
+                                class="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors flex items-center justify-center gap-1">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                <span>Додати</span>
+                            </button>
+                            <button type="button" id="fleet-cancel-edit-btn" onclick="resetFleetForm()" title="Скасувати"
+                                class="hidden py-2 px-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg">
+                                <i data-lucide="x" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="border border-slate-200 rounded-xl overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-100 border-b border-slate-200 text-xs font-bold uppercase text-slate-600">
+                                    <th class="py-2.5 px-4 w-12 text-center">№</th>
+                                    <th class="py-2.5 px-4">Борт. номер</th>
+                                    <th class="py-2.5 px-4">Назва / Модель ТЗ</th>
+                                    <th class="py-2.5 px-4">Тип</th>
+                                    <th class="py-2.5 px-4 text-right w-24">Дії</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fleet-table-body" class="divide-y divide-slate-200"></tbody>
+                        </table>
+                        <div id="fleet-empty-state" class="py-8 px-4 text-center text-sm text-slate-500">
+                            Список ТЗ порожній. Додайте свої машини у формі вище.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вкладка Маршрутів -->
+                <div id="catalog-tab-routes" class="hidden space-y-4">
+                    <form id="route-catalog-form" class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                        <div class="sm:col-span-3">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Номер маршруту *</label>
+                            <input type="text" id="cat-route-num" required placeholder="Напр. 5 або 12А" autocomplete="off"
+                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-bold text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="sm:col-span-7">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Напрямок / Опис</label>
+                            <input type="text" id="cat-route-desc" placeholder="Напр. Вокзал — Мікрорайон" autocomplete="off"
+                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <button type="submit"
+                                class="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors flex items-center justify-center gap-1">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                <span>Додати</span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="border border-slate-200 rounded-xl overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-100 border-b border-slate-200 text-xs font-bold uppercase text-slate-600">
+                                    <th class="py-2.5 px-4 w-12 text-center">№</th>
+                                    <th class="py-2.5 px-4">Маршрут</th>
+                                    <th class="py-2.5 px-4">Напрямок / Опис</th>
+                                    <th class="py-2.5 px-4 text-right w-20">Дії</th>
+                                </tr>
+                            </thead>
+                            <tbody id="route-catalog-body" class="divide-y divide-slate-200"></tbody>
+                        </table>
+                        <div id="route-catalog-empty" class="py-8 px-4 text-center text-sm text-slate-500">
+                            Список маршрутів порожній.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0">
+                <button type="button" onclick="closeFleetModal()" class="px-5 py-2 text-sm font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg">
+                    Готово
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- МОДАЛЬНЕ ВІКНО: АВТО-ГЕНЕРАЦІЯ НАРЯДУ (РАНДОМНИЙ РОЗПОДІЛ)            -->
+    <!-- ===================================================================== -->
+    <div id="auto-dispatch-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-3xl w-full overflow-hidden flex flex-col max-h-[92vh]">
+            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-bold shrink-0">
+                        <i data-lucide="wand-2" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold">Авто-генерація наряду (Рандомний розподіл)</h3>
+                        <p class="text-xs text-slate-400">Введіть маршрути, кількість графіків та кількість ТЗ на маршруті</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeAutoDispatchModal()" class="text-slate-400 hover:text-white p-1.5 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-5 text-sm">
+                <!-- Статус парку ТЗ -->
+                <div id="auto-fleet-status-box" class="p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex items-start gap-2.5">
+                        <i id="auto-fleet-status-icon" data-lucide="info" class="w-5 h-5 shrink-0 mt-0.5"></i>
+                        <div>
+                            <p id="auto-fleet-status-title" class="font-bold text-slate-900">Перевірка парку ТЗ...</p>
+                            <p id="auto-fleet-status-desc" class="text-xs text-slate-600 mt-0.5"></p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="closeAutoDispatchModal(); openFleetModal();"
+                        class="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-semibold text-xs rounded-lg shrink-0 self-start sm:self-center">
+                        + Довідник ТЗ
+                    </button>
+                </div>
+
+                <!-- Таблиця маршрутів, графіків та кількості ТЗ -->
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-700">1. Маршрути, кількість графіків та ТЗ</span>
+                        <button type="button" onclick="addAutoRouteRule()"
+                            class="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors flex items-center gap-1">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                            <span>Додати маршрут</span>
+                        </button>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-xl overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                            <thead>
+                                <tr class="bg-slate-100 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-600">
+                                    <th class="py-2.5 px-3 min-w-[115px]">Маршрут *</th>
+                                    <th class="py-2.5 px-3 w-28">К-сть графіків</th>
+                                    <th class="py-2.5 px-3 w-32">ТЗ на маршруті</th>
+                                    <th class="py-2.5 px-3 min-w-[160px]">Зміна</th>
+                                    <th class="py-2.5 px-2 w-10 text-center"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="auto-scheme-tbody" class="divide-y divide-slate-200"></tbody>
+                            <tfoot>
+                                <tr class="bg-slate-50 font-bold text-slate-900 border-t border-slate-200 text-xs">
+                                    <td class="py-2.5 px-3">Разом:</td>
+                                    <td class="py-2.5 px-3 font-mono text-slate-700"><span id="auto-total-schedules">0</span> граф.</td>
+                                    <td class="py-2.5 px-3 font-mono text-blue-700"><span id="auto-total-vehicles">0</span> ТЗ</td>
+                                    <td colspan="2" class="py-2.5 px-3 text-right font-mono text-slate-600">Рядків: <span id="auto-total-rows">0</span></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Налаштування часу виїзду/заїзду та правил -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+                        <label class="flex items-center gap-2 cursor-pointer font-bold text-xs uppercase tracking-wider text-slate-700">
+                            <input type="checkbox" id="auto-gen-times" checked onchange="toggleAutoTimeSettings()" class="rounded text-blue-600">
+                            <span>2. Час виїзду та заїзду</span>
+                        </label>
+                        <div id="auto-time-settings-fields" class="grid grid-cols-3 gap-2 pt-1">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 mb-1">Початок</label>
+                                <input type="text" id="auto-start-time" value="06:00" maxlength="5" inputmode="numeric"
+                                    class="time-mask-input w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg font-mono font-bold text-xs text-center text-slate-900">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 mb-1">Інтервал (хв)</label>
+                                <input type="number" id="auto-interval-mins" value="15" min="1" max="120"
+                                    class="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg font-mono font-bold text-xs text-center text-slate-900">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 mb-1">Тривалість (год)</label>
+                                <input type="number" id="auto-duration-hours" value="9" step="0.5" min="2" max="18"
+                                    class="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg font-mono font-bold text-xs text-center text-slate-900">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+                        <span class="block font-bold text-xs uppercase tracking-wider text-slate-700">3. Параметри на <span id="auto-target-date" class="font-mono text-blue-700"></span></span>
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                            <input type="checkbox" id="auto-unique-vehicles" checked onchange="updateAutoFleetStatus()" class="rounded text-blue-600">
+                            <span>Без дублювання одного ТЗ в зміну</span>
+                        </label>
+                        <div class="flex items-center gap-3 pt-0.5 text-xs">
+                            <label class="flex items-center gap-1.5 cursor-pointer font-medium text-slate-800">
+                                <input type="radio" name="auto-mode" value="replace" checked class="text-blue-600">
+                                <span>Замінити день</span>
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer font-medium text-slate-800">
+                                <input type="radio" name="auto-mode" value="append" class="text-blue-600">
+                                <span>Додати до наряду</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вибір ТЗ із Довідника -->
+                <div id="auto-pool-section" class="border border-slate-200 rounded-xl overflow-hidden">
+                    <div class="px-3.5 py-2 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-700">
+                            4. Доступні ТЗ із Довідника (<span id="auto-selected-pool-count">0</span> з <span id="auto-total-pool-count">0</span>)
+                        </span>
+                        <div class="flex items-center gap-2 text-xs">
+                            <button type="button" onclick="toggleAllPoolVehicles(true)" class="text-blue-600 hover:underline font-semibold">Усі</button>
+                            <span class="text-slate-300">|</span>
+                            <button type="button" onclick="toggleAllPoolVehicles(false)" class="text-slate-500 hover:underline">Жодного</button>
+                        </div>
+                    </div>
+                    <div id="auto-pool-list" class="p-3 max-h-32 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 bg-white"></div>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 shrink-0">
+                <button type="button" onclick="closeAutoDispatchModal()" class="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg">
+                    Скасувати
+                </button>
+                <button type="button" id="run-auto-dispatch-btn" onclick="executeRandomDispatch()"
+                    class="px-5 py-2 text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg shadow-xs flex items-center gap-2">
+                    <i data-lucide="wand-2" class="w-4 h-4"></i>
+                    <span>Згенерувати наряд</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- МОДАЛЬНЕ ВІКНО: РЕДАГУВАННЯ РЯДКА НАРЯДУ                              -->
+    <!-- ===================================================================== -->
+    <div id="edit-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 max-w-lg w-full p-6">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                        <i data-lucide="edit-3" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900">Редагувати запис наряду</h3>
+                </div>
+                <button type="button" onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="edit-form" class="space-y-4">
+                <input type="hidden" id="edit-id">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Бортовий № *</label>
+                        <input type="text" id="edit-board" required
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Маршрут *</label>
+                        <input type="text" id="edit-route" required list="route-suggestions"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Графік / Вихід *</label>
+                        <input type="text" id="edit-schedule" required placeholder="Напр. 1"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Зміна *</label>
+                        <select id="edit-shift" required
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
+                            <option value="1 зміна">1 зміна</option>
+                            <option value="2 зміна">2 зміна</option>
+                            <option value="Розривний">Розривний</option>
+                            <option value="Денний">Денний</option>
+                            <option value="Нічний">Нічний</option>
+                            <option value="Резерв">Резерв</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Час виїзду та заїзду -->
+                <div class="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Час виїзду (ГГ:ХХ)</label>
+                        <input type="text" id="edit-time-out" maxlength="5" inputmode="numeric" placeholder="06:21"
+                            class="time-mask-input w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Час заїзду (ГГ:ХХ)</label>
+                        <input type="text" id="edit-time-in" maxlength="5" inputmode="numeric" placeholder="15:46"
+                            class="time-mask-input w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Модель / Тип ТЗ</label>
+                        <input type="text" id="edit-vehicle" placeholder="Напр. Богдан А092"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Водій / Примітка</label>
+                        <input type="text" id="edit-note" placeholder="ПІБ водія або примітка"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                        Скасувати
+                    </button>
+                    <button type="submit" class="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-xs flex items-center gap-2">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        Зберегти зміни
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // =========================================================================
+        // СТАН ДОДАТКУ ТА ЗБЕРЕЖЕННЯ В LOCALSTORAGE
+        // =========================================================================
+        const STORAGE_KEY_DISPATCH = 'dispatcher_naryad_v2';
+        const STORAGE_KEY_FLEET = 'dispatcher_fleet_v2';
+        const STORAGE_KEY_ROUTES = 'dispatcher_routes_v2';
+
+        let allDispatches = {}; // { 'YYYY-MM-DD': [ { id, board, vehicle, route, schedule, timeOut, timeIn, shift, note, createdAt } ] }
+        let fleetCatalog = [];  // [ { id, board, model, type } ]
+        let routeCatalog = [];  // [ { id, number, desc } ]
+        let currentDate = getTodayISO();
+        let autoRouteRules = [
+            { id: 'r1', route: '1', schedulesCount: 4, vehiclesCount: 4, shiftMode: '1+2' }
+        ];
+        let selectedPoolIds = new Set();
+
+        function getTodayISO() {
+            const now = new Date();
+            const offset = now.getTimezoneOffset() * 60000;
+            return new Date(now - offset).toISOString().split('T')[0];
+        }
+
+        function formatDateUA(isoDate) {
+            if (!isoDate) return '';
+            const [y, m, d] = isoDate.split('-');
+            return `${d}.${m}.${y}`;
+        }
+
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function loadData() {
+            try {
+                allDispatches = JSON.parse(localStorage.getItem(STORAGE_KEY_DISPATCH) || '{}');
+                fleetCatalog = JSON.parse(localStorage.getItem(STORAGE_KEY_FLEET) || '[]');
+                routeCatalog = JSON.parse(localStorage.getItem(STORAGE_KEY_ROUTES) || '[]');
+            } catch (e) {
+                allDispatches = {};
+                fleetCatalog = [];
+                routeCatalog = [];
+            }
+        }
+
+        function saveDispatches() {
+            localStorage.setItem(STORAGE_KEY_DISPATCH, JSON.stringify(allDispatches));
+        }
+
+        function saveFleetAndRoutes() {
+            localStorage.setItem(STORAGE_KEY_FLEET, JSON.stringify(fleetCatalog));
+            localStorage.setItem(STORAGE_KEY_ROUTES, JSON.stringify(routeCatalog));
+            updateCatalogCounters();
+            updateRouteSuggestions();
+        }
+
+        function updateCatalogCounters() {
+            const hc = document.getElementById('header-fleet-count');
+            const vc = document.getElementById('tab-vehicles-count');
+            const rc = document.getElementById('tab-routes-count');
+            if (hc) hc.textContent = fleetCatalog.length;
+            if (vc) vc.textContent = fleetCatalog.length;
+            if (rc) rc.textContent = routeCatalog.length;
+        }
+
+        function updateRouteSuggestions() {
+            const dl = document.getElementById('route-suggestions');
+            if (!dl) return;
+            dl.innerHTML = routeCatalog.map(r => `<option value="${escapeHTML(r.number)}">${escapeHTML(r.desc || '')}</option>`).join('');
+        }
+
+        // =========================================================================
+        // ФОРМАТУВАННЯ ЧАСУ (ГГ:ХХ)
+        // =========================================================================
+        function formatTimeInput(raw) {
+            const digits = String(raw || '').replace(/\D/g, '').slice(0, 4);
+            if (digits.length === 0) return '';
+            if (digits.length <= 2) return digits;
+            if (digits.length === 3) {
+                const h = Math.min(23, parseInt(digits[0], 10));
+                const m = Math.min(59, parseInt(digits.slice(1), 10));
+                return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+            }
+            const h = Math.min(23, parseInt(digits.slice(0, 2), 10));
+            const m = Math.min(59, parseInt(digits.slice(2, 4), 10));
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
+        function attachTimeMasks() {
+            document.querySelectorAll('.time-mask-input').forEach(inp => {
+                inp.addEventListener('blur', () => {
+                    inp.value = formatTimeInput(inp.value);
+                });
+            });
+        }
+
+        function minsToHHMM(totalMins) {
+            const wrapped = ((totalMins % 1440) + 1440) % 1440;
+            const h = Math.floor(wrapped / 60);
+            const m = wrapped % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
+        function hhmmToMins(str) {
+            const formatted = formatTimeInput(str);
+            if (!formatted || !formatted.includes(':')) return 360;
+            const [h, m] = formatted.split(':').map(Number);
+            return (h || 0) * 60 + (m || 0);
+        }
+
+        // =========================================================================
+        // СПОВІЩЕННЯ (TOAST) ТА МОДАЛЬНЕ ПІДТВЕРДЖЕННЯ
+        // =========================================================================
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const colors = {
+                success: 'bg-slate-900 text-white border-slate-700',
+                error: 'bg-red-600 text-white border-red-500',
+                info: 'bg-blue-600 text-white border-blue-500'
+            };
+            const el = document.createElement('div');
+            el.className = `toast-anim pointer-events-auto px-4 py-3 rounded-xl shadow-lg border text-xs sm:text-sm font-medium flex items-center justify-between gap-3 ${colors[type] || colors.success}`;
+            el.innerHTML = `<span>${escapeHTML(message)}</span>`;
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 3200);
+        }
+
+        let confirmCallback = null;
+        function showConfirm(title, message, onConfirm) {
+            const titleEl = document.getElementById('confirm-title');
+            const messageEl = document.getElementById('confirm-message');
+            const modal = document.getElementById('confirm-modal');
+            if (titleEl) titleEl.textContent = title;
+            if (messageEl) messageEl.textContent = message;
+            confirmCallback = onConfirm;
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirm-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+            confirmCallback = null;
+        }
+
+        // =========================================================================
+        // РОБОТА З ДАТАМИ
+        // =========================================================================
+        function setDate(isoDate) {
+            currentDate = isoDate;
+            const dateInput = document.getElementById('dispatch-date');
+            if (dateInput) dateInput.value = currentDate;
+            renderTable();
+        }
+
+        function changeDate(delta) {
+            const dt = new Date(currentDate + 'T00:00:00');
+            dt.setDate(dt.getDate() + delta);
+            const offset = dt.getTimezoneOffset() * 60000;
+            setDate(new Date(dt - offset).toISOString().split('T')[0]);
+        }
+
+        function setToday() {
+            setDate(getTodayISO());
+        }
+
+        function copyToNextDay() {
+            const records = allDispatches[currentDate] || [];
+            if (records.length === 0) {
+                showToast('Немає записів для копіювання', 'error');
+                return;
+            }
+            const dt = new Date(currentDate + 'T00:00:00');
+            dt.setDate(dt.getDate() + 1);
+            const offset = dt.getTimezoneOffset() * 60000;
+            const nextISO = new Date(dt - offset).toISOString().split('T')[0];
+
+            showConfirm(
+                'Копіювати наряд на завтра?',
+                `Скопіювати ${records.length} записів на ${formatDateUA(nextISO)}? Існуючі записи на завтра будуть замінені.`,
+                () => {
+                    allDispatches[nextISO] = records.map((r, idx) => ({
+                        ...r,
+                        id: 'rec_' + Date.now() + '_' + idx
+                    }));
+                    saveDispatches();
+                    setDate(nextISO);
+                    showToast(`Наряд успішно скопійовано на ${formatDateUA(nextISO)}`);
+                }
+            );
+        }
+
+        // =========================================================================
+        // АВТОПІДБІР БОРТОВОГО НОМЕРА З ДОВІДНИКА ТЗ
+        // =========================================================================
+        function setupBoardAutocomplete() {
+            const input = document.getElementById('input-board');
+            const dropdown = document.getElementById('board-dropdown');
+            const preview = document.getElementById('selected-vehicle-preview');
+            if (!input || !dropdown) return;
+
+            function updatePreviewAndDropdown() {
+                const q = input.value.trim().toLowerCase();
+                const exact = fleetCatalog.find(v => v.board.toLowerCase() === q);
+                if (preview) {
+                    preview.textContent = exact ? `${exact.model}` : '';
+                }
+
+                if (fleetCatalog.length === 0) {
+                    dropdown.classList.add('hidden');
+                    return;
+                }
+
+                const matches = fleetCatalog.filter(v =>
+                    !q || v.board.toLowerCase().includes(q) || v.model.toLowerCase().includes(q)
+                ).slice(0, 12);
+
+                if (matches.length === 0) {
+                    dropdown.classList.add('hidden');
+                    return;
+                }
+
+                dropdown.innerHTML = matches.map(v => `
+                    <button type="button" data-board="${escapeHTML(v.board)}" data-model="${escapeHTML(v.model)}"
+                        class="w-full px-3 py-2 text-left hover:bg-blue-50 flex items-center justify-between gap-2 text-xs transition-colors">
+                        <span class="font-mono font-bold text-slate-900">${escapeHTML(v.board)}</span>
+                        <span class="text-slate-500 truncate">${escapeHTML(v.model)} (${escapeHTML(v.type)})</span>
+                    </button>
+                `).join('');
+
+                dropdown.querySelectorAll('button').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        input.value = btn.dataset.board;
+                        if (preview) preview.textContent = btn.dataset.model;
+                        dropdown.classList.add('hidden');
+                        document.getElementById('input-route')?.focus();
+                    });
+                });
+
+                dropdown.classList.remove('hidden');
+            }
+
+            input.addEventListener('focus', updatePreviewAndDropdown);
+            input.addEventListener('input', updatePreviewAndDropdown);
+            document.addEventListener('click', (e) => {
+                if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        // =========================================================================
+        // ДОДАВАННЯ, РЕДАГУВАННЯ ТА ВІДОБРАЖЕННЯ НАРЯДУ
+        // =========================================================================
+        function getShiftBadgeClass(shift) {
+            switch (shift) {
+                case '1 зміна': return 'bg-sky-50 text-sky-700 border-sky-200';
+                case '2 зміна': return 'bg-amber-50 text-amber-700 border-amber-200';
+                case 'Розривний': return 'bg-purple-50 text-purple-700 border-purple-200';
+                case 'Денний': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                case 'Нічний': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+                case 'Резерв': return 'bg-slate-100 text-slate-700 border-slate-300';
+                default: return 'bg-slate-100 text-slate-700 border-slate-200';
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('dispatch-table-body');
+            const emptyState = document.getElementById('empty-state');
+            if (!tbody) return;
+
+            const records = allDispatches[currentDate] || [];
+
+            // Оновлення фільтра маршрутів
+            const routeFilter = document.getElementById('filter-route');
+            const prevRouteVal = routeFilter ? routeFilter.value : 'all';
+            const uniqueRoutes = [...new Set(records.map(r => r.route))].sort((a, b) => a.localeCompare(b, 'uk', { numeric: true }));
+            if (routeFilter) {
+                routeFilter.innerHTML = '<option value="all">Усі маршрути</option>' +
+                    uniqueRoutes.map(rt => `<option value="${escapeHTML(rt)}">Маршрут ${escapeHTML(rt)}</option>`).join('');
+                routeFilter.value = uniqueRoutes.includes(prevRouteVal) ? prevRouteVal : 'all';
+            }
+
+            // Пошук дублікатів бортових номерів у межах однієї зміни
+            const shiftBoardCounts = {};
+            records.forEach(r => {
+                const key = `${r.board.toLowerCase()}|${r.shift}`;
+                shiftBoardCounts[key] = (shiftBoardCounts[key] || 0) + 1;
+            });
+
+            // Фільтрація
+            const searchQuery = (document.getElementById('filter-search')?.value || '').trim().toLowerCase();
+            const selectedRoute = routeFilter ? routeFilter.value : 'all';
+            const selectedShift = document.getElementById('filter-shift')?.value || 'all';
+            const sortBy = document.getElementById('sort-by')?.value || 'route';
+
+            let filtered = records.filter(r => {
+                if (selectedRoute !== 'all' && r.route !== selectedRoute) return false;
+                if (selectedShift !== 'all' && r.shift !== selectedShift) return false;
+                if (searchQuery) {
+                    const hay = `${r.board} ${r.vehicle || ''} ${r.route} ${r.schedule} ${r.shift} ${r.note || ''}`.toLowerCase();
+                    if (!hay.includes(searchQuery)) return false;
+                }
+                return true;
+            });
+
+            // Сортування
+            filtered.sort((a, b) => {
+                if (sortBy === 'route') {
+                    const cmp = a.route.localeCompare(b.route, 'uk', { numeric: true });
+                    return cmp !== 0 ? cmp : a.schedule.localeCompare(b.schedule, 'uk', { numeric: true });
+                }
+                if (sortBy === 'board') return a.board.localeCompare(b.board, 'uk', { numeric: true });
+                if (sortBy === 'shift') return a.shift.localeCompare(b.shift, 'uk');
+                if (sortBy === 'schedule') return a.schedule.localeCompare(b.schedule, 'uk', { numeric: true });
+                return (a.createdAt || 0) - (b.createdAt || 0);
+            });
+
+            // Статистика
+            document.getElementById('stat-total').textContent = records.length;
+            document.getElementById('stat-shift1').textContent = records.filter(r => r.shift === '1 зміна').length;
+            document.getElementById('stat-shift2').textContent = records.filter(r => r.shift === '2 зміна').length;
+            document.getElementById('stat-split').textContent = records.filter(r => !['1 зміна', '2 зміна'].includes(r.shift)).length;
+            document.getElementById('stat-routes').textContent = uniqueRoutes.length;
+
+            // Дані для друку А4
+            document.getElementById('print-date-display').textContent = formatDateUA(currentDate);
+            document.getElementById('print-total-count').textContent = records.length;
+            document.getElementById('print-routes-count').textContent = uniqueRoutes.length;
+            document.getElementById('print-shifts-summary').textContent =
+                `1 зміна: ${records.filter(r => r.shift === '1 зміна').length} | 2 зміна: ${records.filter(r => r.shift === '2 зміна').length}`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                if (emptyState) emptyState.classList.remove('hidden');
+                lucide.createIcons();
+                return;
+            }
+
+            if (emptyState) emptyState.classList.add('hidden');
+
+            tbody.innerHTML = filtered.map((r, index) => {
+                const isDup = shiftBoardCounts[`${r.board.toLowerCase()}|${r.shift}`] > 1;
+                const timeText = (r.timeOut || r.timeIn)
+                    ? `<span class="ml-1.5 font-mono text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded badge-print">(${escapeHTML(r.timeOut || '--:--')} - ${escapeHTML(r.timeIn || '--:--')})</span>`
+                    : '';
+
+                return `
+                    <tr class="hover:bg-slate-50/90 transition-colors ${isDup ? 'bg-red-50/40' : ''}">
+                        <td class="py-3 px-4 text-center font-mono text-xs text-slate-500">${index + 1}</td>
+                        <td class="py-3 px-4">
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono font-bold text-slate-900">${escapeHTML(r.board)}</span>
+                                ${isDup ? '<span title="Дублікат бортового номера в цій зміні" class="text-red-600 no-print"><i data-lucide="alert-circle" class="w-4 h-4"></i></span>' : ''}
+                            </div>
+                            ${r.vehicle ? `<div class="text-xs text-slate-500">${escapeHTML(r.vehicle)}</div>` : ''}
+                        </td>
+                        <td class="py-3 px-4 font-bold text-slate-900">${escapeHTML(r.route)}</td>
+                        <td class="py-3 px-4">
+                            <span class="font-mono font-bold text-slate-800">${escapeHTML(r.schedule)}</span>
+                            ${timeText}
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border badge-print ${getShiftBadgeClass(r.shift)}">
+                                ${escapeHTML(r.shift)}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-slate-600 text-xs sm:text-sm">${escapeHTML(r.note || '—')}</td>
+                        <td class="py-3 px-4 text-right no-print">
+                            <div class="inline-flex items-center gap-1">
+                                <button type="button" onclick="openEditModal('${r.id}')" title="Редагувати"
+                                    class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                                </button>
+                                <button type="button" onclick="deleteRecord('${r.id}')" title="Видалити"
+                                    class="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        function deleteRecord(id) {
+            const list = allDispatches[currentDate] || [];
+            allDispatches[currentDate] = list.filter(r => r.id !== id);
+            saveDispatches();
+            renderTable();
+            showToast('Запис видалено');
+        }
+
+        function clearCurrentDay() {
+            const list = allDispatches[currentDate] || [];
+            if (list.length === 0) return;
+            showConfirm(
+                'Очистити наряд за день?',
+                `Видалити всі записи (${list.length} шт.) за ${formatDateUA(currentDate)}?`,
+                () => {
+                    delete allDispatches[currentDate];
+                    saveDispatches();
+                    renderTable();
+                    showToast('Наряд на день очищено');
+                }
+            );
+        }
+
+        // Редагування запису в модальному вікні
+        function openEditModal(id) {
+            const rec = (allDispatches[currentDate] || []).find(r => r.id === id);
+            if (!rec) return;
+            document.getElementById('edit-id').value = rec.id;
+            document.getElementById('edit-board').value = rec.board;
+            document.getElementById('edit-route').value = rec.route;
+            document.getElementById('edit-schedule').value = rec.schedule;
+            document.getElementById('edit-time-out').value = rec.timeOut || '';
+            document.getElementById('edit-time-in').value = rec.timeIn || '';
+            document.getElementById('edit-shift').value = rec.shift;
+            document.getElementById('edit-vehicle').value = rec.vehicle || '';
+            document.getElementById('edit-note').value = rec.note || '';
+
+            const modal = document.getElementById('edit-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('edit-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // =========================================================================
+        // ДОВІДНИК ТЗ ТА МАРШРУТІВ (МОДАЛЬНЕ ВІКНО)
+        // =========================================================================
+        function openFleetModal() {
+            renderFleetTable();
+            renderRouteCatalogTable();
+            const modal = document.getElementById('fleet-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function closeFleetModal() {
+            const modal = document.getElementById('fleet-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            resetFleetForm();
+        }
+
+        function switchCatalogTab(tab) {
+            const vehTab = document.getElementById('catalog-tab-vehicles');
+            const rtTab = document.getElementById('catalog-tab-routes');
+            const vehBtn = document.getElementById('tab-btn-vehicles');
+            const rtBtn = document.getElementById('tab-btn-routes');
+
+            if (tab === 'vehicles') {
+                vehTab.classList.remove('hidden');
+                rtTab.classList.add('hidden');
+                vehBtn.className = 'pb-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 flex items-center gap-2';
+                rtBtn.className = 'pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2';
+            } else {
+                vehTab.classList.add('hidden');
+                rtTab.classList.remove('hidden');
+                rtBtn.className = 'pb-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 flex items-center gap-2';
+                vehBtn.className = 'pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2';
+            }
+        }
+
+        function renderFleetTable() {
+            const tbody = document.getElementById('fleet-table-body');
+            const empty = document.getElementById('fleet-empty-state');
+            if (!tbody) return;
+
+            if (fleetCatalog.length === 0) {
+                tbody.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            tbody.innerHTML = fleetCatalog.map((v, idx) => `
+                <tr class="hover:bg-slate-50">
+                    <td class="py-2.5 px-4 text-center font-mono text-xs text-slate-400">${idx + 1}</td>
+                    <td class="py-2.5 px-4 font-mono font-bold text-slate-900">${escapeHTML(v.board)}</td>
+                    <td class="py-2.5 px-4 font-medium text-slate-800">${escapeHTML(v.model)}</td>
+                    <td class="py-2.5 px-4 text-xs text-slate-600">${escapeHTML(v.type)}</td>
+                    <td class="py-2.5 px-4 text-right">
+                        <button type="button" onclick="editFleetVehicle('${v.id}')" class="p-1 text-slate-500 hover:text-blue-600" title="Редагувати">
+                            <i data-lucide="pencil" class="w-4 h-4"></i>
+                        </button>
+                        <button type="button" onclick="deleteFleetVehicle('${v.id}')" class="p-1 text-slate-500 hover:text-red-600 ml-1" title="Видалити">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function editFleetVehicle(id) {
+            const item = fleetCatalog.find(v => v.id === id);
+            if (!item) return;
+            document.getElementById('fleet-edit-id').value = item.id;
+            document.getElementById('fleet-board').value = item.board;
+            document.getElementById('fleet-model').value = item.model;
+            document.getElementById('fleet-type').value = item.type;
+            document.getElementById('fleet-submit-btn').innerHTML = '<i data-lucide="check" class="w-4 h-4"></i><span>Зберегти</span>';
+            document.getElementById('fleet-cancel-edit-btn').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function resetFleetForm() {
+            document.getElementById('fleet-form')?.reset();
+            document.getElementById('fleet-edit-id').value = '';
+            document.getElementById('fleet-submit-btn').innerHTML = '<i data-lucide="plus" class="w-4 h-4"></i><span>Додати</span>';
+            document.getElementById('fleet-cancel-edit-btn').classList.add('hidden');
+            lucide.createIcons();
+        }
+
+        function deleteFleetVehicle(id) {
+            fleetCatalog = fleetCatalog.filter(v => v.id !== id);
+            saveFleetAndRoutes();
+            renderFleetTable();
+            showToast('ТЗ видалено з довідника');
+        }
+
+        function renderRouteCatalogTable() {
+            const tbody = document.getElementById('route-catalog-body');
+            const empty = document.getElementById('route-catalog-empty');
+            if (!tbody) return;
+
+            if (routeCatalog.length === 0) {
+                tbody.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            tbody.innerHTML = routeCatalog.map((r, idx) => `
+                <tr class="hover:bg-slate-50">
+                    <td class="py-2.5 px-4 text-center font-mono text-xs text-slate-400">${idx + 1}</td>
+                    <td class="py-2.5 px-4 font-bold text-slate-900">${escapeHTML(r.number)}</td>
+                    <td class="py-2.5 px-4 text-slate-600">${escapeHTML(r.desc || '—')}</td>
+                    <td class="py-2.5 px-4 text-right">
+                        <button type="button" onclick="deleteCatalogRoute('${r.id}')" class="p-1 text-slate-500 hover:text-red-600" title="Видалити">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function deleteCatalogRoute(id) {
+            routeCatalog = routeCatalog.filter(r => r.id !== id);
+            saveFleetAndRoutes();
+            renderRouteCatalogTable();
+            showToast('Маршрут видалено');
+        }
+
+        // =========================================================================
+        // АВТО-ГЕНЕРАЦІЯ НАРЯДУ (РАНДОМНИЙ РОЗПОДІЛ)
+        // =========================================================================
+        function openAutoDispatchModal() {
+            document.getElementById('auto-target-date').textContent = formatDateUA(currentDate);
+            selectedPoolIds = new Set(fleetCatalog.map(v => v.id));
+
+            if (routeCatalog.length > 0 && autoRouteRules.length === 1 && autoRouteRules[0].route === '1') {
+                autoRouteRules = routeCatalog.map((r, idx) => ({
+                    id: 'rule_' + idx,
+                    route: r.number,
+                    schedulesCount: 2,
+                    vehiclesCount: 2,
+                    shiftMode: '1+2'
+                }));
+            }
+
+            renderAutoRulesTable();
+            renderAutoPoolList();
+            updateAutoFleetStatus();
+
+            const modal = document.getElementById('auto-dispatch-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function closeAutoDispatchModal() {
+            const modal = document.getElementById('auto-dispatch-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function toggleAutoTimeSettings() {
+            const checked = document.getElementById('auto-gen-times').checked;
+            const fields = document.getElementById('auto-time-settings-fields');
+            fields.style.opacity = checked ? '1' : '0.4';
+            fields.style.pointerEvents = checked ? 'auto' : 'none';
+        }
+
+        function addAutoRouteRule() {
+            autoRouteRules.push({
+                id: 'rule_' + Date.now(),
+                route: '',
+                schedulesCount: 2,
+                vehiclesCount: 2,
+                shiftMode: '1+2'
+            });
+            renderAutoRulesTable();
+        }
+
+        function removeAutoRouteRule(id) {
+            if (autoRouteRules.length <= 1) return;
+            autoRouteRules = autoRouteRules.filter(r => r.id !== id);
+            renderAutoRulesTable();
+        }
+
+        function updateAutoRuleField(id, field, value) {
+            const rule = autoRouteRules.find(r => r.id === id);
+            if (!rule) return;
+            if (field === 'schedulesCount' || field === 'vehiclesCount') {
+                rule[field] = Math.max(1, parseInt(value, 10) || 1);
+            } else {
+                rule[field] = value;
+            }
+            recalcAutoTotals();
+        }
+
+        function renderAutoRulesTable() {
+            const tbody = document.getElementById('auto-scheme-tbody');
+            if (!tbody) return;
+
+            tbody.innerHTML = autoRouteRules.map(rule => `
+                <tr>
+                    <td class="py-2 px-3">
+                        <input type="text" value="${escapeHTML(rule.route)}" list="route-suggestions" placeholder="№ маршруту"
+                            oninput="updateAutoRuleField('${rule.id}', 'route', this.value)"
+                            class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-bold text-xs text-slate-900">
+                    </td>
+                    <td class="py-2 px-3">
+                        <input type="number" min="1" max="100" value="${rule.schedulesCount}"
+                            oninput="updateAutoRuleField('${rule.id}', 'schedulesCount', this.value)"
+                            class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-mono font-bold text-xs text-center text-slate-900">
+                    </td>
+                    <td class="py-2 px-3">
+                        <input type="number" min="1" max="100" value="${rule.vehiclesCount}"
+                            oninput="updateAutoRuleField('${rule.id}', 'vehiclesCount', this.value)"
+                            class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-mono font-bold text-xs text-center text-blue-700">
+                    </td>
+                    <td class="py-2 px-3">
+                        <select onchange="updateAutoRuleField('${rule.id}', 'shiftMode', this.value)"
+                            class="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900">
+                            <option value="1+2" ${rule.shiftMode === '1+2' ? 'selected' : ''}>1 + 2 зміни</option>
+                            <option value="1 зміна" ${rule.shiftMode === '1 зміна' ? 'selected' : ''}>Тільки 1 зміна</option>
+                            <option value="2 зміна" ${rule.shiftMode === '2 зміна' ? 'selected' : ''}>Тільки 2 зміна</option>
+                            <option value="Денний" ${rule.shiftMode === 'Денний' ? 'selected' : ''}>Денний (цілий день)</option>
+                            <option value="Розривний" ${rule.shiftMode === 'Розривний' ? 'selected' : ''}>Розривний</option>
+                        </select>
+                    </td>
+                    <td class="py-2 px-2 text-center">
+                        <button type="button" onclick="removeAutoRouteRule('${rule.id}')" class="p-1 text-slate-400 hover:text-red-600" title="Видалити рядок">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            recalcAutoTotals();
+            lucide.createIcons();
+        }
+
+        function recalcAutoTotals() {
+            let totalSchedules = 0;
+            let totalVehicles = 0;
+            let totalRows = 0;
+
+            autoRouteRules.forEach(r => {
+                totalSchedules += r.schedulesCount;
+                totalVehicles += r.vehiclesCount;
+                const shiftsMultiplier = r.shiftMode === '1+2' ? 2 : 1;
+                totalRows += Math.max(r.schedulesCount, r.vehiclesCount) * shiftsMultiplier;
+            });
+
+            document.getElementById('auto-total-schedules').textContent = totalSchedules;
+            document.getElementById('auto-total-vehicles').textContent = totalVehicles;
+            document.getElementById('auto-total-rows').textContent = totalRows;
+            updateAutoFleetStatus();
+        }
+
+        function renderAutoPoolList() {
+            const container = document.getElementById('auto-pool-list');
+            const totalEl = document.getElementById('auto-total-pool-count');
+            const selEl = document.getElementById('auto-selected-pool-count');
+            if (!container) return;
+
+            totalEl.textContent = fleetCatalog.length;
+            selEl.textContent = selectedPoolIds.size;
+
+            if (fleetCatalog.length === 0) {
+                container.innerHTML = '<p class="col-span-full text-xs text-slate-500 text-center py-3">У Довіднику ТЗ ще немає машин. Додайте їх, щоб формувати наряд.</p>';
+                return;
+            }
+
+            container.innerHTML = fleetCatalog.map(v => {
+                const checked = selectedPoolIds.has(v.id);
+                return `
+                    <label class="flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${checked ? 'bg-blue-50/70 border-blue-300 text-slate-900' : 'bg-slate-50 border-slate-200 text-slate-400'}">
+                        <input type="checkbox" ${checked ? 'checked' : ''} onchange="togglePoolVehicle('${v.id}', this.checked)" class="rounded text-blue-600">
+                        <span class="font-mono font-bold">${escapeHTML(v.board)}</span>
+                        <span class="truncate text-[11px]">${escapeHTML(v.model)}</span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        function togglePoolVehicle(id, isChecked) {
+            if (isChecked) selectedPoolIds.add(id);
+            else selectedPoolIds.delete(id);
+            document.getElementById('auto-selected-pool-count').textContent = selectedPoolIds.size;
+            updateAutoFleetStatus();
+        }
+
+        function toggleAllPoolVehicles(selectAll) {
+            if (selectAll) selectedPoolIds = new Set(fleetCatalog.map(v => v.id));
+            else selectedPoolIds.clear();
+            renderAutoPoolList();
+            updateAutoFleetStatus();
+        }
+
+        function updateAutoFleetStatus() {
+            const box = document.getElementById('auto-fleet-status-box');
+            const title = document.getElementById('auto-fleet-status-title');
+            const desc = document.getElementById('auto-fleet-status-desc');
+            const btn = document.getElementById('run-auto-dispatch-btn');
+
+            const neededVehicles = autoRouteRules.reduce((sum, r) => sum + r.vehiclesCount, 0);
+            const availableCount = selectedPoolIds.size;
+
+            if (fleetCatalog.length === 0) {
+                box.className = 'p-3.5 rounded-xl border bg-red-50 border-red-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3';
+                title.textContent = 'У Довіднику ТЗ немає жодної машини';
+                desc.textContent = 'Додайте бортові номери у «Довідник ТЗ», щоб програма могла розподілити їх по маршрутах.';
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                return;
+            }
+
+            if (availableCount === 0) {
+                box.className = 'p-3.5 rounded-xl border bg-amber-50 border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3';
+                title.textContent = 'Не обрано жодного ТЗ для розподілу';
+                desc.textContent = 'Позначте галочками машини в блоці №4 нижче.';
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                return;
+            }
+
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+            if (availableCount < neededVehicles) {
+                box.className = 'p-3.5 rounded-xl border bg-amber-50 border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3';
+                title.textContent = `Обрано ${availableCount} ТЗ із потрібних ${neededVehicles}`;
+                desc.textContent = 'Програма розподілить доступні машини по маршрутах у межах наявного парку.';
+            } else {
+                box.className = 'p-3.5 rounded-xl border bg-emerald-50 border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3';
+                title.textContent = `Готово до генерації: доступно ${availableCount} ТЗ`;
+                desc.textContent = `Буде випадково розподілено ${neededVehicles} ТЗ по вказаних маршрутах та графіках.`;
+            }
+        }
+
+        function shuffleArray(arr) {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
+        function executeRandomDispatch() {
+            const validRules = autoRouteRules.filter(r => r.route.trim() !== '');
+            if (validRules.length === 0) {
+                showToast('Вкажіть хоча б один номер маршруту', 'error');
+                return;
+            }
+
+            const pool = shuffleArray(fleetCatalog.filter(v => selectedPoolIds.has(v.id)));
+            if (pool.length === 0) {
+                showToast('Оберіть хоча б один ТЗ із довідника', 'error');
+                return;
+            }
+
+            const uniqueMode = document.getElementById('auto-unique-vehicles').checked;
+            const genTimes = document.getElementById('auto-gen-times').checked;
+            const startMins = hhmmToMins(document.getElementById('auto-start-time').value || '06:00');
+            const intervalMins = Math.max(1, parseInt(document.getElementById('auto-interval-mins').value, 10) || 15);
+            const durationMins = Math.round((parseFloat(document.getElementById('auto-duration-hours').value) || 9) * 60);
+            const applyMode = document.querySelector('input[name="auto-mode"]:checked')?.value || 'replace';
+
+            const generated = [];
+            let poolCursor = 0;
+
+            validRules.forEach((rule, rIdx) => {
+                const count = Math.max(rule.schedulesCount, rule.vehiclesCount);
+                const routeVehicles = [];
+
+                for (let i = 0; i < rule.vehiclesCount; i++) {
+                    if (uniqueMode) {
+                        if (poolCursor < pool.length) {
+                            routeVehicles.push(pool[poolCursor++]);
+                        }
+                    } else {
+                        routeVehicles.push(pool[poolCursor % pool.length]);
+                        poolCursor++;
+                    }
+                }
+
+                if (routeVehicles.length === 0) return;
+
+                for (let s = 0; s < count; s++) {
+                    const vehicleObj = routeVehicles[s % routeVehicles.length];
+                    const scheduleNum = String(s + 1);
+                    const shift1Out = startMins + (s * intervalMins) + (rIdx * 3);
+                    const shift1In = shift1Out + durationMins;
+
+                    if (rule.shiftMode === '1+2') {
+                        generated.push({
+                            id: 'auto_' + Date.now() + '_' + generated.length,
+                            board: vehicleObj.board,
+                            vehicle: vehicleObj.model,
+                            route: rule.route.trim(),
+                            schedule: scheduleNum,
+                            timeOut: genTimes ? minsToHHMM(shift1Out) : '',
+                            timeIn: genTimes ? minsToHHMM(shift1In) : '',
+                            shift: '1 зміна',
+                            note: '',
+                            createdAt: Date.now() + generated.length
+                        });
+                        generated.push({
+                            id: 'auto_' + Date.now() + '_' + generated.length,
+                            board: vehicleObj.board,
+                            vehicle: vehicleObj.model,
+                            route: rule.route.trim(),
+                            schedule: scheduleNum,
+                            timeOut: genTimes ? minsToHHMM(shift1In + 15) : '',
+                            timeIn: genTimes ? minsToHHMM(shift1In + 15 + durationMins) : '',
+                            shift: '2 зміна',
+                            note: '',
+                            createdAt: Date.now() + generated.length
+                        });
+                    } else {
+                        const baseOut = rule.shiftMode === '2 зміна' ? shift1In + 15 : shift1Out;
+                        generated.push({
+                            id: 'auto_' + Date.now() + '_' + generated.length,
+                            board: vehicleObj.board,
+                            vehicle: vehicleObj.model,
+                            route: rule.route.trim(),
+                            schedule: scheduleNum,
+                            timeOut: genTimes ? minsToHHMM(baseOut) : '',
+                            timeIn: genTimes ? minsToHHMM(baseOut + durationMins) : '',
+                            shift: rule.shiftMode,
+                            note: '',
+                            createdAt: Date.now() + generated.length
+                        });
+                    }
+                }
+            });
+
+            if (generated.length === 0) {
+                showToast('Не вдалося сформувати записи — перевірте кількість вільних ТЗ', 'error');
+                return;
+            }
+
+            if (applyMode === 'append') {
+                allDispatches[currentDate] = [...(allDispatches[currentDate] || []), ...generated];
+            } else {
+                allDispatches[currentDate] = generated;
+            }
+
+            saveDispatches();
+            renderTable();
+            closeAutoDispatchModal();
+            showToast(`Автоматично сформовано ${generated.length} записів наряду`);
+        }
+
+        // =========================================================================
+        // ЕКСПОРТ CSV (EXCEL) ТА ДРУК А4
+        // =========================================================================
+        function exportToCSV() {
+            const records = allDispatches[currentDate] || [];
+            if (records.length === 0) {
+                showToast('Немає даних для експорту', 'error');
+                return;
+            }
+
+            const headers = ['№', 'Бортовий номер', 'Модель ТЗ', 'Маршрут', 'Графік', 'Час виїзду', 'Час заїзду', 'Зміна', 'Водій / Примітка'];
+            const rows = records.map((r, i) => [
+                i + 1,
+                r.board,
+                r.vehicle || '',
+                r.route,
+                r.schedule,
+                r.timeOut || '',
+                r.timeIn || '',
+                r.shift,
+                r.note || ''
+            ]);
+
+            const csvContent = '\uFEFF' + [headers, ...rows]
+                .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
+                .join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Наряд_${currentDate}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Файл CSV для Excel завантажено');
+        }
+
+        function printDispatch() {
+            const now = new Date();
+            document.getElementById('print-timestamp').textContent =
+                `Друк: ${now.toLocaleDateString('uk-UA')} ${now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}`;
+            window.print();
+        }
+
+        // =========================================================================
+        // ІНІЦІАЛІЗАЦІЯ ПОДІЙ
+        // =========================================================================
+        function initApp() {
+            loadData();
+            updateCatalogCounters();
+            updateRouteSuggestions();
+            attachTimeMasks();
+            setupBoardAutocomplete();
+
+            // Встановлення поточної дати
+            const dateInput = document.getElementById('dispatch-date');
+            if (dateInput) {
+                dateInput.value = currentDate;
+                dateInput.addEventListener('change', (e) => {
+                    if (e.target.value) setDate(e.target.value);
+                });
+            }
+
+            // Форма швидкого додавання запису в наряд
+            const addForm = document.getElementById('add-form');
+            if (addForm) {
+                addForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const board = document.getElementById('input-board').value.trim();
+                    const route = document.getElementById('input-route').value.trim();
+                    const schedule = document.getElementById('input-schedule').value.trim();
+                    const timeOut = formatTimeInput(document.getElementById('input-time-out').value);
+                    const timeIn = formatTimeInput(document.getElementById('input-time-in').value);
+                    const shift = document.getElementById('input-shift').value;
+                    const note = document.getElementById('input-note').value.trim();
+
+                    if (!board || !route || !schedule) return;
+
+                    const matchedVehicle = fleetCatalog.find(v => v.board.toLowerCase() === board.toLowerCase());
+                    const newRecord = {
+                        id: 'rec_' + Date.now(),
+                        board,
+                        vehicle: matchedVehicle ? matchedVehicle.model : '',
+                        route,
+                        schedule,
+                        timeOut,
+                        timeIn,
+                        shift,
+                        note,
+                        createdAt: Date.now()
+                    };
+
+                    if (!allDispatches[currentDate]) allDispatches[currentDate] = [];
+                    allDispatches[currentDate].push(newRecord);
+                    saveDispatches();
+                    renderTable();
+
+                    // Очищення полів після додавання
+                    document.getElementById('input-board').value = '';
+                    document.getElementById('input-schedule').value = '';
+                    document.getElementById('input-time-out').value = '';
+                    document.getElementById('input-time-in').value = '';
+                    document.getElementById('input-note').value = '';
+                    document.getElementById('selected-vehicle-preview').textContent = '';
+                    document.getElementById('input-board').focus();
+                    showToast(`Борт № ${board} додано в наряд`);
+                });
+            }
+
+            // Форма редагування запису
+            const editForm = document.getElementById('edit-form');
+            if (editForm) {
+                editForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const id = document.getElementById('edit-id').value;
+                    const list = allDispatches[currentDate] || [];
+                    const idx = list.findIndex(r => r.id === id);
+                    if (idx !== -1) {
+                        list[idx] = {
+                            ...list[idx],
+                            board: document.getElementById('edit-board').value.trim(),
+                            route: document.getElementById('edit-route').value.trim(),
+                            schedule: document.getElementById('edit-schedule').value.trim(),
+                            timeOut: formatTimeInput(document.getElementById('edit-time-out').value),
+                            timeIn: formatTimeInput(document.getElementById('edit-time-in').value),
+                            shift: document.getElementById('edit-shift').value,
+                            vehicle: document.getElementById('edit-vehicle').value.trim(),
+                            note: document.getElementById('edit-note').value.trim()
+                        };
+                        saveDispatches();
+                        renderTable();
+                        showToast('Зміни збережено');
+                    }
+                    closeEditModal();
+                });
+            }
+
+            // Форма Довідника ТЗ
+            const fleetForm = document.getElementById('fleet-form');
+            if (fleetForm) {
+                fleetForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const editId = document.getElementById('fleet-edit-id').value;
+                    const board = document.getElementById('fleet-board').value.trim();
+                    const model = document.getElementById('fleet-model').value.trim();
+                    const type = document.getElementById('fleet-type').value;
+
+                    if (!board || !model) return;
+
+                    if (editId) {
+                        const idx = fleetCatalog.findIndex(v => v.id === editId);
+                        if (idx !== -1) fleetCatalog[idx] = { id: editId, board, model, type };
+                        showToast('Дані ТЗ оновлено');
+                    } else {
+                        fleetCatalog.push({ id: 'veh_' + Date.now(), board, model, type });
+                        showToast(`ТЗ № ${board} додано до парку`);
+                    }
+
+                    saveFleetAndRoutes();
+                    renderFleetTable();
+                    resetFleetForm();
+                });
+            }
+
+            // Форма Довідника Маршрутів
+            const routeForm = document.getElementById('route-catalog-form');
+            if (routeForm) {
+                routeForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const number = document.getElementById('cat-route-num').value.trim();
+                    const desc = document.getElementById('cat-route-desc').value.trim();
+                    if (!number) return;
+
+                    routeCatalog.push({ id: 'rt_' + Date.now(), number, desc });
+                    saveFleetAndRoutes();
+                    renderRouteCatalogTable();
+                    routeForm.reset();
+                    showToast(`Маршрут ${number} додано`);
+                });
+            }
+
+            // Фільтри та сортування
+            ['filter-search', 'filter-route', 'filter-shift', 'sort-by'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', renderTable);
+                    el.addEventListener('change', renderTable);
+                }
+            });
+
+            // Кнопки підтвердження
+            document.getElementById('confirm-cancel')?.addEventListener('click', closeConfirmModal);
+            document.getElementById('confirm-ok')?.addEventListener('click', () => {
+                if (confirmCallback) confirmCallback();
+                closeConfirmModal();
+            });
+
+            // Годинник у футері
+            function updateClock() {
+                const el = document.getElementById('live-clock');
+                if (el) {
+                    el.textContent = new Date().toLocaleTimeString('uk-UA');
+                }
+            }
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            renderTable();
+            lucide.createIcons();
+        }
+
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
