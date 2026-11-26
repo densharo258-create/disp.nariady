@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Диспетчерська відомість — Наряд на випуск транспорту</title>
+    <title>Диспетчерська АРМ — Наряд на випуск транспорту</title>
     <!-- Підключення Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Шрифти Inter та JetBrains Mono для чіткого відображення бортових номерів і часу -->
+    <!-- Шрифти Inter та JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -29,11 +29,11 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
+            background-color: #f4f7fb;
             color: #0f172a;
         }
 
-        /* Стилі для друкованої форми А4 */
+        /* Стилі спеціально для друку (Форма А4) */
         @media print {
             @page {
                 size: A4 portrait;
@@ -103,92 +103,67 @@
 
     <!-- Модальне вікно підтвердження -->
     <div id="confirm-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-xl shadow-xl border border-slate-200 max-w-md w-full p-6">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-6">
             <div class="flex items-center gap-3 mb-3">
-                <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
                     <i data-lucide="alert-triangle" class="w-5 h-5"></i>
                 </div>
                 <h3 id="confirm-title" class="text-lg font-bold text-slate-900">Підтвердження дії</h3>
             </div>
             <p id="confirm-message" class="text-sm text-slate-600 mb-6 leading-relaxed"></p>
             <div class="flex justify-end gap-3">
-                <button type="button" id="confirm-cancel" class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">Скасувати</button>
-                <button type="button" id="confirm-ok" class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">Підтвердити</button>
+                <button type="button" id="confirm-cancel" class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Скасувати</button>
+                <button type="button" id="confirm-ok" class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors">Підтвердити</button>
             </div>
         </div>
     </div>
 
-    <!-- ВЕРХНЯ ПАНЕЛЬ (Класичний чистий дизайн диспетчерської відомості) -->
-    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30 no-print">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3.5">
-                <!-- Назва та статус -->
+    <!-- ВЕРХНЯ НАВІГАЦІЙНА ПАНЕЛЬ (Диспетчерська АРМ) -->
+    <header class="bg-[#0b132b] text-white border-b border-slate-800 sticky top-0 z-30 shadow-sm no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <!-- Ліва частина: логотип та реквізити -->
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-inner shrink-0">
-                        <i data-lucide="bus-front" class="w-6 h-6 text-white"></i>
+                    <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-inner shrink-0">
+                        <i data-lucide="bus-front" class="w-5 h-5 text-white"></i>
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white">Диспетчерська відомість</h1>
-                            <span class="px-2 py-0.5 text-xs font-mono font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded">НАРЯД</span>
+                            <span class="text-base sm:text-lg font-bold tracking-tight text-white">Диспетчерська АРМ</span>
+                            <span class="px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                ГОТОВО
+                            </span>
                         </div>
-                        <p class="text-xs text-slate-400">Оперативне формування наряду на випуск транспорту</p>
+                        <p id="header-company-subtitle" class="text-xs text-slate-400">Наряд на випуск транспорту</p>
                     </div>
                 </div>
 
-                <!-- Керування датою та основні дії -->
-                <div class="flex flex-wrap items-center gap-2">
-                    <!-- Перемикач дати -->
-                    <div class="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5">
-                        <button type="button" onclick="changeDate(-1)" title="Попередній день" class="p-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-md transition-colors">
-                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
-                        </button>
-                        <div class="relative flex items-center px-2">
-                            <i data-lucide="calendar" class="w-4 h-4 text-blue-400 mr-2 pointer-events-none"></i>
-                            <input type="date" id="dispatch-date" class="bg-transparent text-sm font-mono font-semibold text-white focus:outline-none cursor-pointer">
-                        </div>
-                        <button type="button" onclick="changeDate(1)" title="Наступний день" class="p-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-md transition-colors">
-                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-
-                    <button type="button" onclick="setToday()" class="px-3 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition-colors">
-                        Сьогодні
+                <!-- Центр: перемикач розділів -->
+                <nav class="flex items-center bg-[#14203d] p-1 rounded-xl border border-slate-700/70 self-start lg:self-auto overflow-x-auto max-w-full">
+                    <button type="button" id="nav-btn-dispatch" onclick="switchMainSection('dispatch')"
+                        class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all whitespace-nowrap bg-blue-600 text-white shadow-xs">
+                        <i data-lucide="calendar-check" class="w-4 h-4"></i>
+                        <span>Наряд на дату</span>
                     </button>
-
-                    <!-- Кнопка Довідника ТЗ -->
-                    <button type="button" onclick="openFleetModal()" title="Власний парк машин та маршрути"
-                        class="px-3 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg transition-colors flex items-center gap-1.5">
-                        <i data-lucide="garage" class="w-4 h-4 text-amber-400"></i>
-                        <span>Довідник ТЗ (<span id="header-fleet-count">0</span>)</span>
+                    <button type="button" id="nav-btn-fleet" onclick="switchMainSection('fleet')"
+                        class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-2 transition-all whitespace-nowrap text-slate-300 hover:text-white">
+                        <i data-lucide="bus" class="w-4 h-4"></i>
+                        <span>Довідник ТЗ (<span id="nav-fleet-count">0</span>)</span>
                     </button>
-
-                    <!-- Кнопка Авто-генерації -->
-                    <button type="button" onclick="openAutoDispatchModal()" title="Рандомно сформувати наряд по маршрутах"
-                        class="px-3 py-2 text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs">
-                        <i data-lucide="wand-2" class="w-4 h-4"></i>
-                        <span>Авто-генерація</span>
+                    <button type="button" id="nav-btn-settings" onclick="switchMainSection('settings')"
+                        class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-2 transition-all whitespace-nowrap text-slate-300 hover:text-white">
+                        <i data-lucide="database" class="w-4 h-4"></i>
+                        <span>База / Налаштування</span>
                     </button>
+                </nav>
 
-                    <!-- Копіювати на завтра -->
-                    <button type="button" onclick="copyToNextDay()" title="Скопіювати поточний наряд на наступний день"
-                        class="px-3 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-xs">
-                        <i data-lucide="copy-plus" class="w-4 h-4"></i>
-                        <span class="hidden sm:inline">На завтра</span>
-                    </button>
-
-                    <!-- Експорт CSV -->
-                    <button type="button" onclick="exportToCSV()" title="Завантажити таблицю для Excel (CSV)"
-                        class="px-3 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-xs">
-                        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-                        <span class="hidden sm:inline">Excel / CSV</span>
-                    </button>
-
-                    <!-- Друк А4 -->
-                    <button type="button" onclick="printDispatch()" title="Друкувати відомість А4"
-                        class="px-3.5 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-xs">
-                        <i data-lucide="printer" class="w-4 h-4"></i>
-                        <span>Друк А4</span>
+                <!-- Права частина: Встановити додаток -->
+                <div class="hidden sm:flex items-center">
+                    <button type="button" onclick="handleInstallApp()"
+                        class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#14203d] hover:bg-slate-800 text-slate-200 border border-slate-700 transition-colors flex items-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4 text-slate-300"></i>
+                        <span>Встановити додаток</span>
                     </button>
                 </div>
             </div>
@@ -199,7 +174,7 @@
     <div class="print-only max-w-7xl mx-auto px-4 pt-2 mb-6">
         <div class="flex justify-between items-start border-b-2 border-black pb-3 mb-4">
             <div>
-                <p class="text-xs uppercase tracking-wider font-bold">Диспетчерська служба руху</p>
+                <p id="print-company-name" class="text-xs uppercase tracking-wider font-bold">Диспетчерська служба руху</p>
                 <h1 class="text-xl font-bold uppercase mt-1">НАРЯД НА ВИПУСК РУХОМОГО СКЛАДУ</h1>
                 <p class="text-sm mt-1">Дата випуску: <strong id="print-date-display" class="font-mono"></strong></p>
             </div>
@@ -211,64 +186,110 @@
         </div>
     </div>
 
-    <!-- ОСНОВНИЙ КОНТЕНТ -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 print-container">
+    <!-- ===================================================================== -->
+    <!-- РОЗДІЛ 1: НАРЯД НА ДАТУ                                               -->
+    <!-- ===================================================================== -->
+    <main id="section-dispatch" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 print-container">
 
-        <!-- ПАНЕЛЬ СТАТИСТИКИ -->
+        <!-- Панель дати та швидких дій наряду -->
+        <section class="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 no-print">
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center bg-slate-100 border border-slate-200 rounded-xl p-1">
+                    <button type="button" onclick="changeDate(-1)" title="Попередній день" class="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-colors">
+                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                    </button>
+                    <div class="flex items-center px-2.5">
+                        <i data-lucide="calendar" class="w-4 h-4 text-blue-600 mr-2"></i>
+                        <input type="date" id="dispatch-date" class="bg-transparent text-sm font-mono font-bold text-slate-900 focus:outline-none cursor-pointer">
+                    </div>
+                    <button type="button" onclick="changeDate(1)" title="Наступний день" class="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-colors">
+                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <button type="button" onclick="setToday()" class="px-3 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors">
+                    Сьогодні
+                </button>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" onclick="openAutoDispatchModal()"
+                    class="px-3.5 py-2 text-xs font-bold bg-amber-400 hover:bg-amber-500 text-slate-950 rounded-xl transition-colors flex items-center gap-1.5 shadow-2xs">
+                    <i data-lucide="wand-2" class="w-4 h-4"></i>
+                    <span>Авто-генерація</span>
+                </button>
+                <button type="button" onclick="copyToNextDay()"
+                    class="px-3.5 py-2 text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl transition-colors flex items-center gap-1.5">
+                    <i data-lucide="copy-plus" class="w-4 h-4"></i>
+                    <span>На завтра</span>
+                </button>
+                <button type="button" onclick="exportToCSV()"
+                    class="px-3.5 py-2 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl transition-colors flex items-center gap-1.5">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                    <span>Excel / CSV</span>
+                </button>
+                <button type="button" onclick="printDispatch()"
+                    class="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors flex items-center gap-1.5 shadow-2xs">
+                    <i data-lucide="printer" class="w-4 h-4"></i>
+                    <span>Друк А4</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Статистика -->
         <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 no-print">
-            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+            <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Всього на лінії</p>
                     <p id="stat-total" class="text-2xl sm:text-3xl font-mono font-bold text-slate-900 mt-1">0</p>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                     <i data-lucide="truck" class="w-5 h-5"></i>
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+            <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">1 зміна</p>
                     <p id="stat-shift1" class="text-2xl sm:text-3xl font-mono font-bold text-sky-600 mt-1">0</p>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
                     <i data-lucide="sunrise" class="w-5 h-5"></i>
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+            <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">2 зміна</p>
                     <p id="stat-shift2" class="text-2xl sm:text-3xl font-mono font-bold text-amber-600 mt-1">0</p>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
                     <i data-lucide="sunset" class="w-5 h-5"></i>
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+            <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Розривні / Інші</p>
                     <p id="stat-split" class="text-2xl sm:text-3xl font-mono font-bold text-purple-600 mt-1">0</p>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                     <i data-lucide="clock" class="w-5 h-5"></i>
                 </div>
             </div>
 
-            <div class="col-span-2 sm:col-span-1 bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+            <div class="col-span-2 sm:col-span-1 bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Маршрутів</p>
                     <p id="stat-routes" class="text-2xl sm:text-3xl font-mono font-bold text-emerald-600 mt-1">0</p>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                     <i data-lucide="route" class="w-5 h-5"></i>
                 </div>
             </div>
         </section>
 
-        <!-- ФОРМА ШВИДКОГО ДОДАВАННЯ ЗАПИСУ -->
-        <section class="bg-white rounded-xl border border-slate-200 shadow-xs p-4 sm:p-5 no-print">
+        <!-- Форма швидкого додавання запису -->
+        <section class="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 sm:p-5 no-print">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-3.5">
                 <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-blue-600"></span>
@@ -278,7 +299,6 @@
             </div>
 
             <form id="add-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
-                <!-- Бортовий номер -->
                 <div class="lg:col-span-3 relative">
                     <div class="flex items-center justify-between mb-1">
                         <label for="input-board" class="block text-xs font-semibold text-slate-600">
@@ -287,50 +307,45 @@
                         <span id="selected-vehicle-preview" class="text-[11px] font-medium text-blue-600 truncate max-w-[140px]"></span>
                     </div>
                     <input type="text" id="input-board" required placeholder="Напр. 102 або АМ1974АА" autocomplete="off"
-                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-sm text-slate-900 placeholder:font-sans placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
-                    <!-- Випадаючий список підбору з довідника ТЗ -->
+                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold text-sm text-slate-900 placeholder:font-sans placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
                     <div id="board-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-300 rounded-xl shadow-xl z-40 max-h-60 overflow-y-auto divide-y divide-slate-100"></div>
                 </div>
 
-                <!-- Маршрут -->
                 <div class="lg:col-span-2">
                     <label for="input-route" class="block text-xs font-semibold text-slate-600 mb-1">
                         Маршрут <span class="text-red-500">*</span>
                     </label>
                     <input type="text" id="input-route" required list="route-suggestions" placeholder="Напр. 2 або 4А" autocomplete="off"
-                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg font-semibold text-sm text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold text-sm text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
                 </div>
 
-                <!-- Графік -->
                 <div class="lg:col-span-1">
                     <label for="input-schedule" class="block text-xs font-semibold text-slate-600 mb-1">
                         Графік <span class="text-red-500">*</span>
                     </label>
                     <input type="text" id="input-schedule" required placeholder="1" autocomplete="off"
-                        class="w-full px-2.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-sm text-slate-900 placeholder:font-sans placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                        class="w-full px-2.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold text-sm text-slate-900 placeholder:font-sans placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
                 </div>
 
-                <!-- Виїзд та Заїзд -->
                 <div class="lg:col-span-2 grid grid-cols-2 gap-1.5">
                     <div>
                         <label for="input-time-out" class="block text-xs font-semibold text-slate-600 mb-1 truncate">Виїзд</label>
                         <input type="text" id="input-time-out" maxlength="5" inputmode="numeric" placeholder="06:21" autocomplete="off"
-                            class="time-mask-input w-full px-2 py-2.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-semibold text-sm text-center text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                            class="time-mask-input w-full px-2 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono font-semibold text-sm text-center text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
                     </div>
                     <div>
                         <label for="input-time-in" class="block text-xs font-semibold text-slate-600 mb-1 truncate">Заїзд</label>
                         <input type="text" id="input-time-in" maxlength="5" inputmode="numeric" placeholder="15:46" autocomplete="off"
-                            class="time-mask-input w-full px-2 py-2.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-semibold text-sm text-center text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                            class="time-mask-input w-full px-2 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono font-semibold text-sm text-center text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
                     </div>
                 </div>
 
-                <!-- Зміна -->
                 <div class="lg:col-span-2">
                     <label for="input-shift" class="block text-xs font-semibold text-slate-600 mb-1">
                         Зміна <span class="text-red-500">*</span>
                     </label>
                     <select id="input-shift" required
-                        class="w-full px-2.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg font-medium text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all cursor-pointer">
+                        class="w-full px-2.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-medium text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all cursor-pointer">
                         <option value="1 зміна">1 зміна</option>
                         <option value="2 зміна">2 зміна</option>
                         <option value="Розривний">Розривний</option>
@@ -340,15 +355,14 @@
                     </select>
                 </div>
 
-                <!-- Водій / Примітка + Кнопка -->
                 <div class="sm:col-span-2 lg:col-span-2 flex gap-2 items-end">
                     <div class="flex-1 min-w-0">
                         <label for="input-note" class="block text-xs font-semibold text-slate-600 mb-1 truncate">Примітка / Водій</label>
                         <input type="text" id="input-note" placeholder="ПІБ водія..." autocomplete="off"
-                            class="w-full px-2.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                            class="w-full px-2.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
                     </div>
                     <button type="submit" title="Внести в наряд"
-                        class="py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm rounded-lg shadow-xs transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer">
+                        class="py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer">
                         <i data-lucide="plus-circle" class="w-4 h-4"></i>
                         <span>Додати</span>
                     </button>
@@ -358,24 +372,23 @@
             <datalist id="route-suggestions"></datalist>
         </section>
 
-        <!-- ТАБЛИЦЯ НАРЯДУ ТА ФІЛЬТРИ -->
-        <section class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-            <!-- Панель інструментів таблиці -->
+        <!-- Таблиця наряду та фільтри -->
+        <section class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
             <div class="p-4 border-b border-slate-200 bg-slate-50/70 flex flex-col lg:flex-row lg:items-center justify-between gap-3 no-print">
                 <div class="flex flex-wrap items-center gap-2.5 flex-1">
                     <div class="relative flex-1 min-w-[200px] max-w-xs">
                         <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
                         <input type="text" id="filter-search" placeholder="Пошук борту, маршруту, водія..."
-                            class="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
 
                     <select id="filter-route"
-                        class="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="all">Усі маршрути</option>
                     </select>
 
                     <select id="filter-shift"
-                        class="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="all">Усі зміни</option>
                         <option value="1 зміна">1 зміна</option>
                         <option value="2 зміна">2 зміна</option>
@@ -392,7 +405,7 @@
                         <span>Сортування:</span>
                     </div>
                     <select id="sort-by"
-                        class="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        class="px-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="route">За маршрутом</option>
                         <option value="board">За бортовим №</option>
                         <option value="shift">За зміною</option>
@@ -401,14 +414,13 @@
                     </select>
 
                     <button type="button" onclick="clearCurrentDay()" title="Очистити наряд за обрану дату"
-                        class="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors flex items-center gap-1.5 ml-auto lg:ml-2">
+                        class="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-colors flex items-center gap-1.5 ml-auto lg:ml-2">
                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                         <span>Очистити день</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Таблиця -->
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -426,7 +438,6 @@
                 </table>
             </div>
 
-            <!-- Порожній стан -->
             <div id="empty-state" class="hidden py-14 px-4 text-center no-print">
                 <div class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
                     <i data-lucide="clipboard-list" class="w-7 h-7"></i>
@@ -436,11 +447,11 @@
                     Додайте транспортний засіб у формі вище, відкрийте «Довідник ТЗ» для створення свого парку або скористайтеся «Авто-генерацією».
                 </p>
                 <div class="flex flex-wrap justify-center gap-2">
-                    <button type="button" onclick="openFleetModal()" class="px-4 py-2 text-xs font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg transition-colors inline-flex items-center gap-1.5">
-                        <i data-lucide="garage" class="w-4 h-4 text-amber-600"></i>
+                    <button type="button" onclick="switchMainSection('fleet')" class="px-4 py-2 text-xs font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors inline-flex items-center gap-1.5">
+                        <i data-lucide="bus" class="w-4 h-4 text-blue-600"></i>
                         Довідник ТЗ
                     </button>
-                    <button type="button" onclick="openAutoDispatchModal()" class="px-4 py-2 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg transition-colors inline-flex items-center gap-1.5">
+                    <button type="button" onclick="openAutoDispatchModal()" class="px-4 py-2 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-xl transition-colors inline-flex items-center gap-1.5">
                         <i data-lucide="wand-2" class="w-4 h-4"></i>
                         Авто-генерація наряду
                     </button>
@@ -451,7 +462,7 @@
             <div class="print-only mt-10 pt-4">
                 <div class="grid grid-cols-2 gap-8 text-sm">
                     <div>
-                        <p class="mb-6">Наряд склав черговий диспетчер: _______________________</p>
+                        <p class="mb-6">Наряд склав черговий диспетчер (<span id="print-dispatcher-name"></span>): _______________________</p>
                         <p class="text-xs text-slate-600">(підпис, прізвище та ініціали)</p>
                     </div>
                     <div>
@@ -460,41 +471,31 @@
                     </div>
                 </div>
                 <div class="mt-6 text-xs text-slate-500 flex justify-between border-t border-slate-300 pt-2">
-                    <span>Сформовано в системі «Диспетчерська відомість»</span>
+                    <span>Сформовано в системі «Диспетчерська АРМ»</span>
                     <span id="print-timestamp"></span>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- ФУТЕР -->
-    <footer class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center sm:text-left flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400 no-print">
-        <p>Диспетчерська відомість. Дані автоматично зберігаються у браузері.</p>
-        <p class="mt-1 sm:mt-0 font-mono" id="live-clock"></p>
-    </footer>
-
     <!-- ===================================================================== -->
-    <!-- МОДАЛЬНЕ ВІКНО: ДОВІДНИК ТЗ (ПАРК МАШИН) ТА МАРШРУТІВ                 -->
+    <!-- РОЗДІЛ 2: ДОВІДНИК ТЗ ТА МАРШРУТІВ                                     -->
     <!-- ===================================================================== -->
-    <div id="fleet-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-3xl w-full overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+    <section id="section-fleet" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 no-print">
+        <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div class="px-6 py-4 bg-[#0b132b] text-white flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-bold">
-                        <i data-lucide="garage" class="w-5 h-5"></i>
+                    <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                        <i data-lucide="bus" class="w-5 h-5"></i>
                     </div>
                     <div>
-                        <h3 class="text-base sm:text-lg font-bold">Довідник ТЗ (Парк машин) та маршрутів</h3>
-                        <p class="text-xs text-slate-400">Додавайте власні бортові номери та моделі ТЗ для швидкого вибору і авто-генерації</p>
+                        <h2 class="text-base sm:text-lg font-bold">Довідник ТЗ (Парк машин) та маршрутів</h2>
+                        <p class="text-xs text-slate-400">Додавайте власні бортові номери, назви/моделі ТЗ та маршрути</p>
                     </div>
                 </div>
-                <button type="button" onclick="closeFleetModal()" class="text-slate-400 hover:text-white p-1.5 rounded-lg">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
             </div>
 
-            <!-- Вкладки всередині модального вікна -->
-            <div class="flex border-b border-slate-200 bg-slate-50 px-6 pt-3 gap-6 shrink-0">
+            <div class="flex border-b border-slate-200 bg-slate-50 px-6 pt-3 gap-6">
                 <button type="button" id="tab-btn-vehicles" onclick="switchCatalogTab('vehicles')"
                     class="pb-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 flex items-center gap-2">
                     <i data-lucide="truck" class="w-4 h-4"></i>
@@ -507,7 +508,7 @@
                 </button>
             </div>
 
-            <div class="p-6 overflow-y-auto space-y-5">
+            <div class="p-6 space-y-5">
                 <!-- Вкладка ТЗ -->
                 <div id="catalog-tab-vehicles" class="space-y-4">
                     <form id="fleet-form" class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
@@ -515,17 +516,17 @@
                         <div class="sm:col-span-3">
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Борт. номер *</label>
                             <input type="text" id="fleet-board" required placeholder="Напр. 102" autocomplete="off"
-                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono font-bold text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-mono font-bold text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                         <div class="sm:col-span-5">
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Назва / Модель ТЗ *</label>
                             <input type="text" id="fleet-model" required placeholder="Напр. Богдан А092, МАЗ-206" autocomplete="off"
-                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                         <div class="sm:col-span-2">
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Тип ТЗ</label>
                             <select id="fleet-type"
-                                class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <option value="Автобус">Автобус</option>
                                 <option value="Тролейбус">Тролейбус</option>
                                 <option value="Трамвай">Трамвай</option>
@@ -534,12 +535,12 @@
                         </div>
                         <div class="sm:col-span-2 flex gap-1.5">
                             <button type="submit" id="fleet-submit-btn"
-                                class="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors flex items-center justify-center gap-1">
+                                class="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-1">
                                 <i data-lucide="plus" class="w-4 h-4"></i>
                                 <span>Додати</span>
                             </button>
                             <button type="button" id="fleet-cancel-edit-btn" onclick="resetFleetForm()" title="Скасувати"
-                                class="hidden py-2 px-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg">
+                                class="hidden py-2 px-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl">
                                 <i data-lucide="x" class="w-4 h-4"></i>
                             </button>
                         </div>
@@ -570,16 +571,16 @@
                         <div class="sm:col-span-3">
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Номер маршруту *</label>
                             <input type="text" id="cat-route-num" required placeholder="Напр. 5 або 12А" autocomplete="off"
-                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-bold text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-bold text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                         <div class="sm:col-span-7">
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Напрямок / Опис</label>
                             <input type="text" id="cat-route-desc" placeholder="Напр. Вокзал — Мікрорайон" autocomplete="off"
-                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                         <div class="sm:col-span-2">
                             <button type="submit"
-                                class="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors flex items-center justify-center gap-1">
+                                class="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-1">
                                 <i data-lucide="plus" class="w-4 h-4"></i>
                                 <span>Додати</span>
                             </button>
@@ -604,23 +605,137 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </section>
 
-            <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0">
-                <button type="button" onclick="closeFleetModal()" class="px-5 py-2 text-sm font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg">
-                    Готово
-                </button>
+    <!-- ===================================================================== -->
+    <!-- РОЗДІЛ 3: БАЗА / НАЛАШТУВАННЯ (ЯК НА СКРІНШОТІ)                      -->
+    <!-- ===================================================================== -->
+    <section id="section-settings" class="hidden flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 no-print">
+
+        <!-- Картка 1: Реквізити підприємства та диспетчера -->
+        <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div class="px-6 py-4 bg-[#0b132b] text-white flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-blue-600/30 border border-blue-400/30 text-blue-300 flex items-center justify-center">
+                    <i data-lucide="building-2" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h2 class="text-base sm:text-lg font-bold">Реквізити підприємства та диспетчера</h2>
+                    <p class="text-xs text-slate-400">Автоматично підставляються у шапку та підпис друкованої відомості А4</p>
+                </div>
+            </div>
+
+            <form id="settings-requisites-form" class="p-6 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="req-company-name" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                            Назва підприємства / Депо / АТП
+                        </label>
+                        <input type="text" id="req-company-name" placeholder="Напр. ФОП / КП АТП"
+                            class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label for="req-dispatcher-name" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                            ПІБ чергового диспетчера за замовчуванням
+                        </label>
+                        <input type="text" id="req-dispatcher-name" placeholder="Прізвище Ім'я"
+                            class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-1">
+                    <button type="submit"
+                        class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-2xs transition-colors flex items-center gap-2">
+                        <i data-lucide="save" class="w-4 h-4"></i>
+                        <span>Зберегти реквізити</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Картка 2: Резервне копіювання та перенесення бази даних (.json) -->
+        <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div class="px-6 py-4 bg-[#0b132b] text-white flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center justify-center">
+                    <i data-lucide="database" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h2 class="text-base sm:text-lg font-bold">Резервне копіювання та перенесення бази даних</h2>
+                    <p class="text-xs text-slate-400">Збереження всіх нарядів, довідника ТЗ та маршрутів у файл .json для перенесення між пристроями</p>
+                </div>
+            </div>
+
+            <div class="p-6 space-y-5">
+                <!-- Лічильники бази -->
+                <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 grid grid-cols-3 gap-4 text-center">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 mb-1">Днів у базі</p>
+                        <p id="db-stat-days" class="text-2xl font-mono font-bold text-slate-900">0</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 mb-1">Одиниць ТЗ у парку</p>
+                        <p id="db-stat-vehicles" class="text-2xl font-mono font-bold text-blue-600">0</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 mb-1">Маршрутів</p>
+                        <p id="db-stat-routes" class="text-2xl font-mono font-bold text-emerald-600">0</p>
+                    </div>
+                </div>
+
+                <!-- Два блоки дій -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-50/70 border border-slate-200 rounded-2xl p-5 flex flex-col justify-between gap-4">
+                        <div>
+                            <div class="flex items-center gap-2 text-emerald-700 font-bold text-sm mb-1.5">
+                                <i data-lucide="cloud-download" class="w-4 h-4"></i>
+                                <span>Створити резервну копію (.json)</span>
+                            </div>
+                            <p class="text-xs text-slate-500 leading-relaxed">
+                                Завантажує повну копію бази даних на пристрій. Ви можете переслати цей файл у Telegram/Viber та відкрити на телефоні чи іншому ПК.
+                            </p>
+                        </div>
+                        <button type="button" onclick="exportDatabaseJSON()"
+                            class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-2xs transition-colors flex items-center justify-center gap-2">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                            <span>Зберегти базу (.json)</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-slate-50/70 border border-slate-200 rounded-2xl p-5 flex flex-col justify-between gap-4">
+                        <div>
+                            <div class="flex items-center gap-2 text-blue-700 font-bold text-sm mb-1.5">
+                                <i data-lucide="cloud-upload" class="w-4 h-4"></i>
+                                <span>Відновити базу з файлу (.json)</span>
+                            </div>
+                            <p class="text-xs text-slate-500 leading-relaxed">
+                                Оберіть раніше збережений файл резервної копії <code class="px-1 py-0.5 bg-slate-200 rounded text-slate-700">.json</code>, щоб завантажити всі ТЗ, маршрути та наряди.
+                            </p>
+                        </div>
+                        <label class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-2xs transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                            <i data-lucide="folder-open" class="w-4 h-4"></i>
+                            <span>Завантажити файл .json</span>
+                            <input type="file" id="import-json-input" accept=".json,application/json" onchange="importDatabaseJSON(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+    </section>
+
+    <!-- ФУТЕР -->
+    <footer class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center sm:text-left flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400 no-print">
+        <p>Диспетчерська АРМ. Дані автоматично зберігаються у браузері.</p>
+        <p class="mt-1 sm:mt-0 font-mono" id="live-clock"></p>
+    </footer>
 
     <!-- ===================================================================== -->
     <!-- МОДАЛЬНЕ ВІКНО: АВТО-ГЕНЕРАЦІЯ НАРЯДУ (РАНДОМНИЙ РОЗПОДІЛ)            -->
     <!-- ===================================================================== -->
     <div id="auto-dispatch-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-3xl w-full overflow-hidden flex flex-col max-h-[92vh]">
-            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-3xl w-full overflow-hidden flex flex-col max-h-[92vh]">
+            <div class="px-6 py-4 bg-[#0b132b] text-white flex items-center justify-between shrink-0">
                 <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-bold shrink-0">
+                    <div class="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-bold shrink-0">
                         <i data-lucide="wand-2" class="w-5 h-5"></i>
                     </div>
                     <div>
@@ -634,7 +749,6 @@
             </div>
 
             <div class="p-6 overflow-y-auto space-y-5 text-sm">
-                <!-- Статус парку ТЗ -->
                 <div id="auto-fleet-status-box" class="p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div class="flex items-start gap-2.5">
                         <i id="auto-fleet-status-icon" data-lucide="info" class="w-5 h-5 shrink-0 mt-0.5"></i>
@@ -643,13 +757,12 @@
                             <p id="auto-fleet-status-desc" class="text-xs text-slate-600 mt-0.5"></p>
                         </div>
                     </div>
-                    <button type="button" onclick="closeAutoDispatchModal(); openFleetModal();"
+                    <button type="button" onclick="closeAutoDispatchModal(); switchMainSection('fleet');"
                         class="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-semibold text-xs rounded-lg shrink-0 self-start sm:self-center">
                         + Довідник ТЗ
                     </button>
                 </div>
 
-                <!-- Таблиця маршрутів, графіків та кількості ТЗ -->
                 <div>
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
                         <span class="text-xs font-bold uppercase tracking-wider text-slate-700">1. Маршрути, кількість графіків та ТЗ</span>
@@ -684,7 +797,6 @@
                     </div>
                 </div>
 
-                <!-- Налаштування часу виїзду/заїзду та правил -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
                         <label class="flex items-center gap-2 cursor-pointer font-bold text-xs uppercase tracking-wider text-slate-700">
@@ -729,7 +841,6 @@
                     </div>
                 </div>
 
-                <!-- Вибір ТЗ із Довідника -->
                 <div id="auto-pool-section" class="border border-slate-200 rounded-xl overflow-hidden">
                     <div class="px-3.5 py-2 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-2">
                         <span class="text-xs font-bold uppercase tracking-wider text-slate-700">
@@ -746,11 +857,11 @@
             </div>
 
             <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 shrink-0">
-                <button type="button" onclick="closeAutoDispatchModal()" class="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg">
+                <button type="button" onclick="closeAutoDispatchModal()" class="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-xl">
                     Скасувати
                 </button>
                 <button type="button" id="run-auto-dispatch-btn" onclick="executeRandomDispatch()"
-                    class="px-5 py-2 text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg shadow-xs flex items-center gap-2">
+                    class="px-5 py-2 text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-xl shadow-2xs flex items-center gap-2">
                     <i data-lucide="wand-2" class="w-4 h-4"></i>
                     <span>Згенерувати наряд</span>
                 </button>
@@ -762,7 +873,7 @@
     <!-- МОДАЛЬНЕ ВІКНО: РЕДАГУВАННЯ РЯДКА НАРЯДУ                              -->
     <!-- ===================================================================== -->
     <div id="edit-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-xl shadow-xl border border-slate-200 max-w-lg w-full p-6">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full p-6">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
                 <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
@@ -781,12 +892,12 @@
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Бортовий № *</label>
                         <input type="text" id="edit-board" required
-                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Маршрут *</label>
                         <input type="text" id="edit-route" required list="route-suggestions"
-                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
                     </div>
                 </div>
 
@@ -794,12 +905,12 @@
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Графік / Вихід *</label>
                         <input type="text" id="edit-schedule" required placeholder="Напр. 1"
-                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Зміна *</label>
                         <select id="edit-shift" required
-                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
                             <option value="1 зміна">1 зміна</option>
                             <option value="2 зміна">2 зміна</option>
                             <option value="Розривний">Розривний</option>
@@ -810,17 +921,16 @@
                     </div>
                 </div>
 
-                <!-- Час виїзду та заїзду -->
                 <div class="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Час виїзду (ГГ:ХХ)</label>
                         <input type="text" id="edit-time-out" maxlength="5" inputmode="numeric" placeholder="06:21"
-                            class="time-mask-input w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="time-mask-input w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Час заїзду (ГГ:ХХ)</label>
                         <input type="text" id="edit-time-in" maxlength="5" inputmode="numeric" placeholder="15:46"
-                            class="time-mask-input w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="time-mask-input w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
 
@@ -828,20 +938,20 @@
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Модель / Тип ТЗ</label>
                         <input type="text" id="edit-vehicle" placeholder="Напр. Богдан А092"
-                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Водій / Примітка</label>
                         <input type="text" id="edit-note" placeholder="ПІБ водія або примітка"
-                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white">
                     </div>
                 </div>
 
                 <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
                         Скасувати
                     </button>
-                    <button type="submit" class="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-xs flex items-center gap-2">
+                    <button type="submit" class="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-2xs flex items-center gap-2">
                         <i data-lucide="check" class="w-4 h-4"></i>
                         Зберегти зміни
                     </button>
@@ -857,11 +967,15 @@
         const STORAGE_KEY_DISPATCH = 'dispatcher_naryad_v2';
         const STORAGE_KEY_FLEET = 'dispatcher_fleet_v2';
         const STORAGE_KEY_ROUTES = 'dispatcher_routes_v2';
+        const STORAGE_KEY_REQUISITES = 'dispatcher_requisites_v2';
 
-        let allDispatches = {}; // { 'YYYY-MM-DD': [ { id, board, vehicle, route, schedule, timeOut, timeIn, shift, note, createdAt } ] }
+        let allDispatches = {}; // { 'YYYY-MM-DD': [ ... ] }
         let fleetCatalog = [];  // [ { id, board, model, type } ]
         let routeCatalog = [];  // [ { id, number, desc } ]
+        let requisites = { companyName: '', dispatcherName: '' };
         let currentDate = getTodayISO();
+        let deferredInstallPrompt = null;
+
         let autoRouteRules = [
             { id: 'r1', route: '1', schedulesCount: 4, vehiclesCount: 4, shiftMode: '1+2' }
         ];
@@ -894,15 +1008,18 @@
                 allDispatches = JSON.parse(localStorage.getItem(STORAGE_KEY_DISPATCH) || '{}');
                 fleetCatalog = JSON.parse(localStorage.getItem(STORAGE_KEY_FLEET) || '[]');
                 routeCatalog = JSON.parse(localStorage.getItem(STORAGE_KEY_ROUTES) || '[]');
+                requisites = JSON.parse(localStorage.getItem(STORAGE_KEY_REQUISITES) || '{"companyName":"","dispatcherName":""}');
             } catch (e) {
                 allDispatches = {};
                 fleetCatalog = [];
                 routeCatalog = [];
+                requisites = { companyName: '', dispatcherName: '' };
             }
         }
 
         function saveDispatches() {
             localStorage.setItem(STORAGE_KEY_DISPATCH, JSON.stringify(allDispatches));
+            updateDbStats();
         }
 
         function saveFleetAndRoutes() {
@@ -910,21 +1027,187 @@
             localStorage.setItem(STORAGE_KEY_ROUTES, JSON.stringify(routeCatalog));
             updateCatalogCounters();
             updateRouteSuggestions();
+            updateDbStats();
+        }
+
+        function saveRequisites() {
+            localStorage.setItem(STORAGE_KEY_REQUISITES, JSON.stringify(requisites));
+            applyRequisitesToUI();
+        }
+
+        function applyRequisitesToUI() {
+            const sub = document.getElementById('header-company-subtitle');
+            const printComp = document.getElementById('print-company-name');
+            const printDisp = document.getElementById('print-dispatcher-name');
+            const inpComp = document.getElementById('req-company-name');
+            const inpDisp = document.getElementById('req-dispatcher-name');
+
+            if (sub) {
+                sub.textContent = requisites.companyName
+                    ? requisites.companyName
+                    : 'Наряд на випуск транспорту';
+            }
+            if (printComp) {
+                printComp.textContent = requisites.companyName || 'Диспетчерська служба руху';
+            }
+            if (printDisp) {
+                printDisp.textContent = requisites.dispatcherName || '________________';
+            }
+            if (inpComp && document.activeElement !== inpComp) {
+                inpComp.value = requisites.companyName || '';
+            }
+            if (inpDisp && document.activeElement !== inpDisp) {
+                inpDisp.value = requisites.dispatcherName || '';
+            }
         }
 
         function updateCatalogCounters() {
-            const hc = document.getElementById('header-fleet-count');
+            const nc = document.getElementById('nav-fleet-count');
             const vc = document.getElementById('tab-vehicles-count');
             const rc = document.getElementById('tab-routes-count');
-            if (hc) hc.textContent = fleetCatalog.length;
+            if (nc) nc.textContent = fleetCatalog.length;
             if (vc) vc.textContent = fleetCatalog.length;
             if (rc) rc.textContent = routeCatalog.length;
+        }
+
+        function updateDbStats() {
+            const daysCount = Object.keys(allDispatches).filter(k => (allDispatches[k] || []).length > 0).length;
+            const dEl = document.getElementById('db-stat-days');
+            const vEl = document.getElementById('db-stat-vehicles');
+            const rEl = document.getElementById('db-stat-routes');
+            if (dEl) dEl.textContent = daysCount;
+            if (vEl) vEl.textContent = fleetCatalog.length;
+            if (rEl) rEl.textContent = routeCatalog.length;
         }
 
         function updateRouteSuggestions() {
             const dl = document.getElementById('route-suggestions');
             if (!dl) return;
             dl.innerHTML = routeCatalog.map(r => `<option value="${escapeHTML(r.number)}">${escapeHTML(r.desc || '')}</option>`).join('');
+        }
+
+        // =========================================================================
+        // НАВІГАЦІЯ МІЖ РОЗДІЛАМИ (НАРЯД / ДОВІДНИК ТЗ / БАЗА ТА НАЛАШТУВАННЯ)
+        // =========================================================================
+        function switchMainSection(section) {
+            const secDispatch = document.getElementById('section-dispatch');
+            const secFleet = document.getElementById('section-fleet');
+            const secSettings = document.getElementById('section-settings');
+
+            const btnDispatch = document.getElementById('nav-btn-dispatch');
+            const btnFleet = document.getElementById('nav-btn-fleet');
+            const btnSettings = document.getElementById('nav-btn-settings');
+
+            const activeCls = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all whitespace-nowrap bg-blue-600 text-white shadow-xs';
+            const inactiveCls = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-2 transition-all whitespace-nowrap text-slate-300 hover:text-white';
+
+            secDispatch.classList.add('hidden');
+            secFleet.classList.add('hidden');
+            secSettings.classList.add('hidden');
+
+            btnDispatch.className = inactiveCls;
+            btnFleet.className = inactiveCls;
+            btnSettings.className = inactiveCls;
+
+            if (section === 'fleet') {
+                secFleet.classList.remove('hidden');
+                btnFleet.className = activeCls;
+                renderFleetTable();
+                renderRouteCatalogTable();
+            } else if (section === 'settings') {
+                secSettings.classList.remove('hidden');
+                btnSettings.className = activeCls;
+                applyRequisitesToUI();
+                updateDbStats();
+            } else {
+                secDispatch.classList.remove('hidden');
+                btnDispatch.className = activeCls;
+                renderTable();
+            }
+            lucide.createIcons();
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+        });
+
+        function handleInstallApp() {
+            if (deferredInstallPrompt) {
+                deferredInstallPrompt.prompt();
+                deferredInstallPrompt = null;
+            } else {
+                showToast('Відкрийте меню браузера (⋮) → «Додати на головний екран» або «Встановити додаток»', 'info');
+            }
+        }
+
+        // =========================================================================
+        // РЕЗЕРВНЕ КОПІЮВАННЯ ТА ВІДНОВЛЕННЯ БАЗИ (.JSON)
+        // =========================================================================
+        function exportDatabaseJSON() {
+            const payload = {
+                version: 2,
+                exportedAt: new Date().toISOString(),
+                requisites,
+                fleetCatalog,
+                routeCatalog,
+                allDispatches
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dispatcher_backup_${getTodayISO()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Резервну копію бази (.json) збережено');
+        }
+
+        function importDatabaseJSON(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const parsed = JSON.parse(String(e.target.result || '{}'));
+                    showConfirm(
+                        'Відновити базу з файлу .json?',
+                        `Завантажити дані з файлу «${file.name}»? Поточні локальні записи будуть замінені даними з резервної копії.`,
+                        () => {
+                            if (parsed.allDispatches && typeof parsed.allDispatches === 'object') {
+                                allDispatches = parsed.allDispatches;
+                                localStorage.setItem(STORAGE_KEY_DISPATCH, JSON.stringify(allDispatches));
+                            }
+                            if (Array.isArray(parsed.fleetCatalog)) {
+                                fleetCatalog = parsed.fleetCatalog;
+                                localStorage.setItem(STORAGE_KEY_FLEET, JSON.stringify(fleetCatalog));
+                            }
+                            if (Array.isArray(parsed.routeCatalog)) {
+                                routeCatalog = parsed.routeCatalog;
+                                localStorage.setItem(STORAGE_KEY_ROUTES, JSON.stringify(routeCatalog));
+                            }
+                            if (parsed.requisites && typeof parsed.requisites === 'object') {
+                                requisites = parsed.requisites;
+                                localStorage.setItem(STORAGE_KEY_REQUISITES, JSON.stringify(requisites));
+                            }
+                            updateCatalogCounters();
+                            updateRouteSuggestions();
+                            applyRequisitesToUI();
+                            updateDbStats();
+                            renderTable();
+                            renderFleetTable();
+                            renderRouteCatalogTable();
+                            showToast('Базу даних успішно відновлено з файлу .json');
+                        }
+                    );
+                } catch (err) {
+                    showToast('Помилка читання файлу .json', 'error');
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsText(file);
         }
 
         // =========================================================================
@@ -986,24 +1269,18 @@
 
         let confirmCallback = null;
         function showConfirm(title, message, onConfirm) {
-            const titleEl = document.getElementById('confirm-title');
-            const messageEl = document.getElementById('confirm-message');
-            const modal = document.getElementById('confirm-modal');
-            if (titleEl) titleEl.textContent = title;
-            if (messageEl) messageEl.textContent = message;
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
             confirmCallback = onConfirm;
-            if (modal) {
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-            }
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
         }
 
         function closeConfirmModal() {
             const modal = document.getElementById('confirm-modal');
-            if (modal) {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-            }
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
             confirmCallback = null;
         }
 
@@ -1135,7 +1412,6 @@
 
             const records = allDispatches[currentDate] || [];
 
-            // Оновлення фільтра маршрутів
             const routeFilter = document.getElementById('filter-route');
             const prevRouteVal = routeFilter ? routeFilter.value : 'all';
             const uniqueRoutes = [...new Set(records.map(r => r.route))].sort((a, b) => a.localeCompare(b, 'uk', { numeric: true }));
@@ -1145,14 +1421,12 @@
                 routeFilter.value = uniqueRoutes.includes(prevRouteVal) ? prevRouteVal : 'all';
             }
 
-            // Пошук дублікатів бортових номерів у межах однієї зміни
             const shiftBoardCounts = {};
             records.forEach(r => {
                 const key = `${r.board.toLowerCase()}|${r.shift}`;
                 shiftBoardCounts[key] = (shiftBoardCounts[key] || 0) + 1;
             });
 
-            // Фільтрація
             const searchQuery = (document.getElementById('filter-search')?.value || '').trim().toLowerCase();
             const selectedRoute = routeFilter ? routeFilter.value : 'all';
             const selectedShift = document.getElementById('filter-shift')?.value || 'all';
@@ -1168,7 +1442,6 @@
                 return true;
             });
 
-            // Сортування
             filtered.sort((a, b) => {
                 if (sortBy === 'route') {
                     const cmp = a.route.localeCompare(b.route, 'uk', { numeric: true });
@@ -1180,14 +1453,12 @@
                 return (a.createdAt || 0) - (b.createdAt || 0);
             });
 
-            // Статистика
             document.getElementById('stat-total').textContent = records.length;
             document.getElementById('stat-shift1').textContent = records.filter(r => r.shift === '1 зміна').length;
             document.getElementById('stat-shift2').textContent = records.filter(r => r.shift === '2 зміна').length;
             document.getElementById('stat-split').textContent = records.filter(r => !['1 зміна', '2 зміна'].includes(r.shift)).length;
             document.getElementById('stat-routes').textContent = uniqueRoutes.length;
 
-            // Дані для друку А4
             document.getElementById('print-date-display').textContent = formatDateUA(currentDate);
             document.getElementById('print-total-count').textContent = records.length;
             document.getElementById('print-routes-count').textContent = uniqueRoutes.length;
@@ -1272,7 +1543,6 @@
             );
         }
 
-        // Редагування запису в модальному вікні
         function openEditModal(id) {
             const rec = (allDispatches[currentDate] || []).find(r => r.id === id);
             if (!rec) return;
@@ -1298,24 +1568,8 @@
         }
 
         // =========================================================================
-        // ДОВІДНИК ТЗ ТА МАРШРУТІВ (МОДАЛЬНЕ ВІКНО)
+        // ДОВІДНИК ТЗ ТА МАРШРУТІВ
         // =========================================================================
-        function openFleetModal() {
-            renderFleetTable();
-            renderRouteCatalogTable();
-            const modal = document.getElementById('fleet-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            lucide.createIcons();
-        }
-
-        function closeFleetModal() {
-            const modal = document.getElementById('fleet-modal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            resetFleetForm();
-        }
-
         function switchCatalogTab(tab) {
             const vehTab = document.getElementById('catalog-tab-vehicles');
             const rtTab = document.getElementById('catalog-tab-routes');
@@ -1790,6 +2044,7 @@
         }
 
         function printDispatch() {
+            applyRequisitesToUI();
             const now = new Date();
             document.getElementById('print-timestamp').textContent =
                 `Друк: ${now.toLocaleDateString('uk-UA')} ${now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}`;
@@ -1803,15 +2058,30 @@
             loadData();
             updateCatalogCounters();
             updateRouteSuggestions();
+            applyRequisitesToUI();
+            updateDbStats();
             attachTimeMasks();
             setupBoardAutocomplete();
 
-            // Встановлення поточної дати
             const dateInput = document.getElementById('dispatch-date');
             if (dateInput) {
                 dateInput.value = currentDate;
                 dateInput.addEventListener('change', (e) => {
                     if (e.target.value) setDate(e.target.value);
+                });
+            }
+
+            // Збереження реквізитів
+            const reqForm = document.getElementById('settings-requisites-form');
+            if (reqForm) {
+                reqForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    requisites = {
+                        companyName: document.getElementById('req-company-name').value.trim(),
+                        dispatcherName: document.getElementById('req-dispatcher-name').value.trim()
+                    };
+                    saveRequisites();
+                    showToast('Реквізити підприємства та диспетчера збережено');
                 });
             }
 
@@ -1849,7 +2119,6 @@
                     saveDispatches();
                     renderTable();
 
-                    // Очищення полів після додавання
                     document.getElementById('input-board').value = '';
                     document.getElementById('input-schedule').value = '';
                     document.getElementById('input-time-out').value = '';
@@ -1933,7 +2202,6 @@
                 });
             }
 
-            // Фільтри та сортування
             ['filter-search', 'filter-route', 'filter-shift', 'sort-by'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
@@ -1942,14 +2210,12 @@
                 }
             });
 
-            // Кнопки підтвердження
             document.getElementById('confirm-cancel')?.addEventListener('click', closeConfirmModal);
             document.getElementById('confirm-ok')?.addEventListener('click', () => {
                 if (confirmCallback) confirmCallback();
                 closeConfirmModal();
             });
 
-            // Годинник у футері
             function updateClock() {
                 const el = document.getElementById('live-clock');
                 if (el) {
@@ -1958,8 +2224,7 @@
             }
             updateClock();
             setInterval(updateClock, 1000);
-
-            renderTable();
+ renderTable();
             lucide.createIcons();
         }
 
